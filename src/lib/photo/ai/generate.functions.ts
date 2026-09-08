@@ -1,13 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 
-/** Model ids tried in order — providers rotate which ones they serve. */
-const MODELS = [
-  "black-forest-labs/FLUX.1-schnell",
-  "black-forest-labs/FLUX.1-schnell:fal-ai",
-  "black-forest-labs/FLUX.1-schnell:together",
-  "black-forest-labs/FLUX.1-schnell:nebius",
-  "stabilityai/stable-diffusion-xl-base-1.0",
+/** Provider routes tried in order (OpenAI-compatible images API). */
+const ROUTES = [
+  { url: "https://router.huggingface.co/nscale/v1/images/generations", model: "black-forest-labs/FLUX.1-schnell" },
+  { url: "https://router.huggingface.co/v1/images/generations", model: "black-forest-labs/FLUX.1-schnell" },
 ];
+
 
 /** Text-to-image through Hugging Face. Returns a PNG data URL. */
 export const generateImageServer = createServerFn({ method: "POST" })
