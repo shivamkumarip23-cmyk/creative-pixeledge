@@ -4,10 +4,7 @@ import { toast } from "sonner";
 import { Editor } from "@/components/photo/Editor";
 import { HomeScreen } from "@/components/photo/HomeScreen";
 import { BottomNav, type NavKey } from "@/components/shell/BottomNav";
-import { InstallBanner } from "@/components/shell/InstallBanner";
-
 import { PhoneFrame } from "@/components/shell/PhoneFrame";
-import { usePwaInstall } from "@/hooks/use-pwa-install";
 import { loadImageFromFile } from "@/lib/photo/render";
 
 export const Route = createFileRoute("/")({
@@ -38,8 +35,6 @@ function Index() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [nav, setNav] = useState<NavKey>("home");
   const [focusTab, setFocusTab] = useState<string | null>(null);
-  const [bannerDismissed, setBannerDismissed] = useState(false);
-  const { installed, install } = usePwaInstall();
 
   useEffect(() => {
     document.documentElement.classList.toggle("light", theme === "light");
@@ -70,10 +65,6 @@ function Index() {
     if (key === "ai") setFocusTab("AI");
   };
 
-  const onInstall = async () => {
-    await install();
-    setBannerDismissed(true);
-  };
 
   let screen: React.ReactNode;
   if (nav === "home" || !image) {
@@ -103,11 +94,6 @@ function Index() {
     <PhoneFrame>
       <div className="relative h-full w-full overflow-hidden bg-background">
         {screen}
-        <InstallBanner
-          show={!installed && !bannerDismissed}
-          onInstall={onInstall}
-          onDismiss={() => setBannerDismissed(true)}
-        />
         <BottomNav active={nav} onSelect={selectNav} />
       </div>
     </PhoneFrame>
