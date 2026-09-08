@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { AiStudio } from "@/components/photo/AiStudio";
 import { Editor } from "@/components/photo/Editor";
 import { HomeScreen } from "@/components/photo/HomeScreen";
 import { WelcomeScreen } from "@/components/photo/WelcomeScreen";
@@ -45,6 +46,10 @@ function Index() {
   }, [theme]);
 
   const openPicker = (tab?: string) => {
+    if (tab === "AI") {
+      setNav("ai");
+      return;
+    }
     pendingTab.current = tab ?? "Filters";
     inputRef.current?.click();
   };
