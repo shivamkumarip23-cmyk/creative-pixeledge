@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Home, Sliders, Wand2, Download } from "lucide-react";
+import { Home, Sliders, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type NavKey = "home" | "edit" | "ai";
