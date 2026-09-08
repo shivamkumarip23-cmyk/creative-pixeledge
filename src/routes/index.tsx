@@ -4,10 +4,7 @@ import { toast } from "sonner";
 import { Editor } from "@/components/photo/Editor";
 import { HomeScreen } from "@/components/photo/HomeScreen";
 import { BottomNav, type NavKey } from "@/components/shell/BottomNav";
-import { InstallBanner } from "@/components/shell/InstallBanner";
-
 import { PhoneFrame } from "@/components/shell/PhoneFrame";
-import { usePwaInstall } from "@/hooks/use-pwa-install";
 import { loadImageFromFile } from "@/lib/photo/render";
 
 export const Route = createFileRoute("/")({
