@@ -5,7 +5,7 @@ import { Editor } from "@/components/photo/Editor";
 import { HomeScreen } from "@/components/photo/HomeScreen";
 import { BottomNav, type NavKey } from "@/components/shell/BottomNav";
 import { InstallBanner } from "@/components/shell/InstallBanner";
-import { InstallScreen } from "@/components/shell/InstallScreen";
+
 import { PhoneFrame } from "@/components/shell/PhoneFrame";
 import { usePwaInstall } from "@/hooks/use-pwa-install";
 import { loadImageFromFile } from "@/lib/photo/render";
@@ -71,18 +71,12 @@ function Index() {
   };
 
   const onInstall = async () => {
-    const outcome = await install();
-    if (outcome === "unavailable") {
-      setNav("install");
-      toast.info("Use your browser menu → Add to Home Screen");
-    }
+    await install();
     setBannerDismissed(true);
   };
 
   let screen: React.ReactNode;
-  if (nav === "install") {
-    screen = <InstallScreen />;
-  } else if (nav === "home" || !image) {
+  if (nav === "home" || !image) {
     screen = (
       <div className="no-scrollbar h-full overflow-y-auto pb-24">
         <HomeScreen onPick={pick} theme={theme} onToggleTheme={toggleTheme} />
@@ -110,7 +104,7 @@ function Index() {
       <div className="relative h-full w-full overflow-hidden bg-background">
         {screen}
         <InstallBanner
-          show={!installed && !bannerDismissed && nav !== "install"}
+          show={!installed && !bannerDismissed}
           onInstall={onInstall}
           onDismiss={() => setBannerDismissed(true)}
         />
