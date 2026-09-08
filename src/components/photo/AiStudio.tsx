@@ -156,12 +156,20 @@ function ToolView({ tool, onBack }: { tool: Tool; onBack: () => void }) {
   const needs = tool.id === "generate" ? 0 : tool.id === "faceswap" ? 2 : 1;
 
   const pick = async (file: File, slot: "a" | "b") => {
-    if (!file.type.startsWith("image/")) return toast.error("That file isn't a photo");
-    if (file.size > 25 * 1024 * 1024) return toast.error("That photo is too large — max 25 MB");
+    if (!file.type.startsWith("image/")) {
+      toast.error("That file isn't a photo");
+      return;
+    }
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error("That photo is too large — max 25 MB");
+      return;
+    }
     try {
       const img = await loadImageFromFile(file);
-      if ((img.width * img.height) / 1e6 > MAX_MP)
-        return toast.error("That photo is too big to process — try a smaller one");
+      if ((img.width * img.height) / 1e6 > MAX_MP) {
+        toast.error("That photo is too big to process — try a smaller one");
+        return;
+      }
       const next: Slot = { img, url: img.src };
       if (tool.id === "faceswap") {
         next.face = await detectFace(img);
