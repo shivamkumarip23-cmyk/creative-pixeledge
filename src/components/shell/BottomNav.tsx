@@ -1,51 +1,68 @@
 import { motion } from "framer-motion";
-import { Home, Sliders, Wand2 } from "lucide-react";
+import { Home, Images, Plus, LayoutGrid, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type NavKey = "home" | "edit" | "ai";
+export type NavKey = "home" | "library" | "edit" | "ai";
 
-const ITEMS: { key: NavKey; label: string; icon: typeof Home }[] = [
+const LEFT: { key: NavKey; label: string; icon: typeof Home }[] = [
   { key: "home", label: "Home", icon: Home },
-  { key: "edit", label: "Edit", icon: Sliders },
-  { key: "ai", label: "AI Tools", icon: Wand2 },
+  { key: "library", label: "Library", icon: Images },
+];
+
+const RIGHT: { key: NavKey; label: string; icon: typeof Home }[] = [
+  { key: "edit", label: "Edit", icon: LayoutGrid },
+  { key: "ai", label: "AI", icon: Wand2 },
 ];
 
 export function BottomNav({
   active,
   onSelect,
+  onAdd,
 }: {
   active: NavKey;
   onSelect: (key: NavKey) => void;
+  onAdd: () => void;
 }) {
+  const item = (entry: (typeof LEFT)[number]) => {
+    const isActive = active === entry.key;
+    return (
+      <motion.button
+        key={entry.key}
+        type="button"
+        whileTap={{ scale: 0.88 }}
+        onClick={() => onSelect(entry.key)}
+        className={cn(
+          "relative flex flex-1 flex-col items-center gap-1 rounded-[18px] px-1 py-2 text-[9px] font-semibold tracking-wide transition-colors",
+          isActive ? "text-primary" : "text-muted-foreground",
+        )}
+      >
+        {isActive && (
+          <motion.span
+            layoutId="nav-pill"
+            className="absolute inset-0 rounded-[18px] bg-primary/15"
+            transition={{ type: "spring", stiffness: 400, damping: 32 }}
+          />
+        )}
+        <entry.icon className="relative size-5" />
+        <span className="relative">{entry.label}</span>
+      </motion.button>
+    );
+  };
+
   return (
-    <nav className="absolute inset-x-0 bottom-0 z-30 px-3 pb-3">
-      <div className="mx-auto flex max-w-md items-center justify-between gap-1 rounded-[24px] border border-border/70 bg-surface-2/70 p-1.5 shadow-[var(--shadow-panel)] backdrop-blur-xl">
-        {ITEMS.map((item) => {
-          const isActive = active === item.key;
-          return (
-            <motion.button
-              key={item.key}
-              type="button"
-              whileTap={{ scale: 0.9 }}
-              transition={{ type: "spring", stiffness: 500, damping: 25 }}
-              onClick={() => onSelect(item.key)}
-              className={cn(
-                "relative flex flex-1 flex-col items-center gap-1 rounded-[20px] px-2 py-2.5 text-[10px] font-semibold tracking-wide transition-colors",
-                isActive ? "text-primary" : "text-muted-foreground",
-              )}
-            >
-              {isActive && (
-                <motion.span
-                  layoutId="nav-pill"
-                  className="absolute inset-0 rounded-[20px] bg-primary/15"
-                  transition={{ type: "spring", stiffness: 400, damping: 32 }}
-                />
-              )}
-              <item.icon className="relative size-5" />
-              <span className="relative">{item.label.toUpperCase()}</span>
-            </motion.button>
-          );
-        })}
+    <nav className="absolute inset-x-0 bottom-0 z-30 px-3 pb-4">
+      <div className="mx-auto flex max-w-md items-center gap-1 rounded-full border border-primary/15 bg-surface-1/80 p-1.5 shadow-[var(--shadow-panel)] backdrop-blur-xl">
+        {LEFT.map(item)}
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.9 }}
+          onClick={onAdd}
+          aria-label="Add a photo"
+          className="gradient-pill -mt-7 grid size-14 shrink-0 place-items-center border-4 border-surface-1"
+        >
+          <Plus className="size-6" />
+        </motion.button>
+        {RIGHT.map(item)}
       </div>
     </nav>
   );
