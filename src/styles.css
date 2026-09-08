@@ -200,3 +200,22 @@
 @utility no-scrollbar {
   scrollbar-width: none;
 }
+
+@utility glass-card {
+  background: var(--gradient-surface);
+  border: 1px solid oklch(0.75 0.2 340 / 0.18);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(18px);
+  border-radius: 24px;
+}
+
+@utility gradient-pill {
+  background: var(--gradient-brand);
+  color: oklch(0.99 0 0);
+  border-radius: 9999px;
+  box-shadow: 0 12px 34px -12px oklch(0.62 0.22 320 / 0.85);
+}
+
+@utility neon-glow {
+  box-shadow: 0 0 0 1px oklch(0.75 0.2 340 / 0.25), 0 18px 50px -18px oklch(0.62 0.22 320 / 0.8);
+}
