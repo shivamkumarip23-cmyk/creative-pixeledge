@@ -168,10 +168,7 @@ export function swapFaces(
   const td = targetData.data;
   for (let p = 0, i = 0; p < alpha.length; p++, i += 4) {
     const a = alpha[p]!;
-    if (a <= 0) {
-      td[i + 3] = td[i + 3]!;
-      continue;
-    }
+    if (a <= 0) continue;
     for (let k = 0; k < 3; k++) {
       let v = pd[i + k]!;
       if (sFace && sTarget) {
