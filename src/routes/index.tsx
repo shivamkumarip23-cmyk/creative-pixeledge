@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Editor } from "@/components/photo/Editor";
 import { HomeScreen } from "@/components/photo/HomeScreen";
+import { WelcomeScreen } from "@/components/photo/WelcomeScreen";
 import { BottomNav, type NavKey } from "@/components/shell/BottomNav";
 import { PhoneFrame } from "@/components/shell/PhoneFrame";
 import { loadImageFromFile } from "@/lib/photo/render";
@@ -35,18 +36,26 @@ function Index() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [nav, setNav] = useState<NavKey>("home");
   const [focusTab, setFocusTab] = useState<string | null>(null);
+  const [welcome, setWelcome] = useState(true);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const pendingTab = useRef<string | null>(null);
 
   useEffect(() => {
     document.documentElement.classList.toggle("light", theme === "light");
   }, [theme]);
+
+  const openPicker = (tab?: string) => {
+    pendingTab.current = tab ?? "Filters";
+    inputRef.current?.click();
+  };
 
   const pick = async (file: File) => {
     try {
       const img = await loadImageFromFile(file);
       setFileName(file.name);
       setImage(img);
-      setNav("edit");
-      setFocusTab("Filters");
+      setFocusTab(pendingTab.current ?? "Filters");
+      setNav(pendingTab.current === "AI" ? "ai" : "edit");
     } catch {
       toast.error("That file couldn't be opened as a photo");
     }
@@ -55,9 +64,13 @@ function Index() {
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
 
   const selectNav = (key: NavKey) => {
+    if (key === "library") {
+      openPicker();
+      return;
+    }
     if ((key === "edit" || key === "ai") && !image) {
       toast.info("Choose a photo first");
-      setNav("home");
+      openPicker(key === "ai" ? "AI" : "Filters");
       return;
     }
     setNav(key);
@@ -65,12 +78,11 @@ function Index() {
     if (key === "ai") setFocusTab("AI");
   };
 
-
   let screen: React.ReactNode;
   if (nav === "home" || !image) {
     screen = (
-      <div className="no-scrollbar h-full overflow-y-auto pb-24">
-        <HomeScreen onPick={pick} theme={theme} onToggleTheme={toggleTheme} />
+      <div className="no-scrollbar h-full overflow-y-auto pb-28">
+        <HomeScreen onOpenPicker={openPicker} theme={theme} onToggleTheme={toggleTheme} />
       </div>
     );
   } else {
@@ -93,8 +105,25 @@ function Index() {
   return (
     <PhoneFrame>
       <div className="relative h-full w-full overflow-hidden bg-background">
-        {screen}
-        <BottomNav active={nav} onSelect={selectNav} />
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) void pick(file);
+          }}
+        />
+        {welcome ? (
+          <WelcomeScreen onStart={() => setWelcome(false)} />
+        ) : (
+          <>
+            {screen}
+            <BottomNav active={nav} onSelect={selectNav} onAdd={() => openPicker()} />
+          </>
+        )}
       </div>
     </PhoneFrame>
   );
