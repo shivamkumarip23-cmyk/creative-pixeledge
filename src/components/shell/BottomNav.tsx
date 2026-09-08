@@ -2,13 +2,12 @@ import { motion } from "framer-motion";
 import { Home, Sliders, Wand2, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type NavKey = "home" | "edit" | "ai" | "install";
+export type NavKey = "home" | "edit" | "ai";
 
 const ITEMS: { key: NavKey; label: string; icon: typeof Home }[] = [
   { key: "home", label: "Home", icon: Home },
   { key: "edit", label: "Edit", icon: Sliders },
   { key: "ai", label: "AI Tools", icon: Wand2 },
-  { key: "install", label: "Install", icon: Download },
 ];
 
 export function BottomNav({
