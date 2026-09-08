@@ -19,16 +19,16 @@ export const generateImageServer = createServerFn({ method: "POST" })
     if (!token) throw new Error("Image generation is not configured yet");
 
     let lastError = "";
-    for (const model of MODELS) {
-      const res = await fetch("https://router.huggingface.co/v1/images/generations", {
+    for (const route of ROUTES) {
+      const res = await fetch(route.url, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model, prompt: data.prompt, response_format: "b64_json" }),
+        body: JSON.stringify({ model: route.model, prompt: data.prompt, response_format: "b64_json" }),
       });
 
       if (!res.ok) {
         lastError = `${res.status} ${(await res.text().catch(() => "")).slice(0, 160)}`;
-        console.error(`HF image generation failed for ${model}: ${lastError}`);
+        console.error(`HF image generation failed for ${route.url}: ${lastError}`);
         continue;
       }
 
