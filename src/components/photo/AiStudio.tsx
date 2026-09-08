@@ -1,35 +1,28 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
-  Download,
   ImagePlus,
   Loader2,
   Scissors,
   Smile,
   Sparkles,
-  Upload,
   Wand2,
   WandSparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { BeforeAfter, DropZone, ProgressBar, ResultActions } from "@/components/photo/AiBits";
 import { HandText } from "@/components/shell/Doodles";
 import { removeBackground } from "@/lib/photo/ai/bgRemoval";
-import { applyArtStyle, toCanvas, upscaleEnhance } from "@/lib/photo/ai/ops";
+import { detectFace, swapFaces, type FaceBox } from "@/lib/photo/ai/faceSwap";
+import { generateImage, stylizeWithAi } from "@/lib/photo/ai/generate";
+import { applyArtStyle, upscaleEnhance } from "@/lib/photo/ai/ops";
 import { loadImageFromFile } from "@/lib/photo/render";
 import { cn } from "@/lib/utils";
 
 type ToolId = "generate" | "removebg" | "faceswap" | "enhance" | "style" | "cartoon";
 
-type Tool = {
-  id: ToolId;
-  title: string;
-  sub: string;
-  icon: typeof Sparkles;
-  /** how many photos the tool needs */
-  inputs: 0 | 1 | 2;
-  blurb: string;
-};
+type Tool = { id: ToolId; title: string; sub: string; icon: typeof Sparkles; blurb: string };
 
 const TOOLS: Tool[] = [
   {
@@ -37,141 +30,66 @@ const TOOLS: Tool[] = [
     title: "AI Image Generator",
     sub: "Text to image",
     icon: ImagePlus,
-    inputs: 0,
-    blurb: "Describe anything and get a dreamy generated artwork.",
+    blurb: "Describe anything and a real AI model paints it for you.",
   },
   {
     id: "removebg",
     title: "Remove BG",
     sub: "One tap",
     icon: Scissors,
-    inputs: 1,
-    blurb: "Cut out the subject and drop the background instantly.",
+    blurb: "A real cut-out model erases the background right in your browser.",
   },
   {
     id: "faceswap",
     title: "Face Swap",
     sub: "Fun & creative",
     icon: Smile,
-    inputs: 2,
-    blurb: "Blend a face from one photo onto another for a playful mix.",
+    blurb: "Faces are detected automatically, then blended with skin-tone matching.",
   },
   {
     id: "enhance",
     title: "Enhance Quality",
     sub: "HD upscale",
     icon: Sparkles,
-    inputs: 1,
-    blurb: "Rebuild detail and sharpness at double the size.",
+    blurb: "Rebuild detail and sharpness at 2x or 4x the size.",
   },
   {
     id: "style",
     title: "Style Transfer",
     sub: "Turn into art",
     icon: Wand2,
-    inputs: 1,
-    blurb: "Repaint your photo in a painterly art style.",
+    blurb: "Repaint your photo as a famous art style.",
   },
   {
     id: "cartoon",
     title: "Cartoonize",
     sub: "Cartoon magic",
     icon: WandSparkles,
-    inputs: 1,
     blurb: "Turn your photo into a bold, inked cartoon.",
   },
 ];
 
-const STYLES = [
-  { id: "oil", name: "Oil Paint" },
-  { id: "watercolor", name: "Watercolour" },
-  { id: "sketch", name: "Sketch" },
-  { id: "popart", name: "Pop Art" },
-  { id: "neon", name: "Neon" },
-  { id: "duotone", name: "Duotone" },
+const ART_STYLES = [
+  { id: "vangogh", name: "Van Gogh", local: "oil", prompt: "in the style of Vincent van Gogh, swirling thick oil brush strokes" },
+  { id: "picasso", name: "Picasso", local: "popart", prompt: "in the cubist style of Pablo Picasso, bold geometric shapes" },
+  { id: "monet", name: "Monet", local: "watercolor", prompt: "in the impressionist style of Claude Monet, soft dappled light" },
+  { id: "cyberpunk", name: "Cyberpunk", local: "neon", prompt: "cyberpunk neon art, glowing pink and blue lights, futuristic" },
+  { id: "oil", name: "Oil Painting", local: "oil", prompt: "classical oil painting, rich textured brush strokes" },
+  { id: "sketch", name: "Sketch", local: "sketch", prompt: "detailed pencil sketch, graphite shading on paper" },
 ];
 
-const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const BG_COLORS = [
+  { id: "none", name: "None", value: null },
+  { id: "white", name: "White", value: "#ffffff" },
+  { id: "black", name: "Black", value: "#0a0a14" },
+  { id: "pink", name: "Pink", value: "#ff6ec7" },
+  { id: "purple", name: "Purple", value: "#8b5cf6" },
+  { id: "blue", name: "Blue", value: "#3b82f6" },
+];
 
-/** Procedural "generated" artwork used when no image model key is configured. */
-function mockGenerate(prompt: string): HTMLCanvasElement {
-  const c = document.createElement("canvas");
-  c.width = 768;
-  c.height = 768;
-  const ctx = c.getContext("2d")!;
-  let seed = 0;
-  for (let i = 0; i < prompt.length; i++) seed = (seed * 31 + prompt.charCodeAt(i)) % 100000;
-  const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+const MAX_MP = 40; // megapixels safety limit
 
-  const g = ctx.createLinearGradient(0, 0, c.width, c.height);
-  g.addColorStop(0, `hsl(${Math.floor(rnd() * 360)} 90% 62%)`);
-  g.addColorStop(0.5, `hsl(${Math.floor(rnd() * 360)} 85% 58%)`);
-  g.addColorStop(1, `hsl(${Math.floor(rnd() * 360)} 80% 45%)`);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, c.width, c.height);
-
-  for (let i = 0; i < 26; i++) {
-    ctx.globalAlpha = 0.12 + rnd() * 0.25;
-    ctx.beginPath();
-    ctx.arc(rnd() * c.width, rnd() * c.height, 40 + rnd() * 220, 0, Math.PI * 2);
-    ctx.fillStyle = `hsl(${Math.floor(rnd() * 360)} 95% ${40 + rnd() * 45}%)`;
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-
-  const words = prompt.trim().slice(0, 60) || "dream";
-  ctx.fillStyle = "rgba(0,0,0,0.35)";
-  ctx.fillRect(0, c.height - 120, c.width, 120);
-  ctx.fillStyle = "#fff";
-  ctx.font = "600 30px Poppins, sans-serif";
-  ctx.textBaseline = "middle";
-  ctx.fillText(words, 32, c.height - 60, c.width - 64);
-  return c;
-}
-
-/** Playful face blend: soft oval from photo B composited over the centre of A. */
-function mockFaceSwap(base: HTMLImageElement, face: HTMLImageElement): HTMLCanvasElement {
-  const out = toCanvas(base);
-  const ctx = out.getContext("2d")!;
-  const w = out.width;
-  const h = out.height;
-  const rx = w * 0.19;
-  const ry = h * 0.24;
-  const cx = w / 2;
-  const cy = h * 0.38;
-
-  const layer = document.createElement("canvas");
-  layer.width = w;
-  layer.height = h;
-  const lctx = layer.getContext("2d")!;
-  const scale = Math.max((rx * 2.4) / face.width, (ry * 2.4) / face.height);
-  const dw = face.width * scale;
-  const dh = face.height * scale;
-  lctx.drawImage(face, cx - dw / 2, cy - dh / 2, dw, dh);
-  lctx.globalCompositeOperation = "destination-in";
-  const grad = lctx.createRadialGradient(cx, cy, Math.min(rx, ry) * 0.25, cx, cy, Math.max(rx, ry));
-  grad.addColorStop(0, "rgba(0,0,0,1)");
-  grad.addColorStop(0.7, "rgba(0,0,0,0.92)");
-  grad.addColorStop(1, "rgba(0,0,0,0)");
-  lctx.fillStyle = grad;
-  lctx.save();
-  lctx.translate(cx, cy);
-  lctx.scale(1, ry / rx);
-  lctx.beginPath();
-  lctx.arc(0, 0, rx, 0, Math.PI * 2);
-  lctx.restore();
-  lctx.fillRect(0, 0, w, h);
-  lctx.globalCompositeOperation = "source-over";
-
-  ctx.globalAlpha = 0.92;
-  ctx.drawImage(layer, 0, 0);
-  ctx.globalAlpha = 1;
-  return out;
-}
-
-function canvasUrl(c: HTMLCanvasElement) {
-  return c.toDataURL("image/png");
-}
+const canvasUrl = (c: HTMLCanvasElement) => c.toDataURL("image/png");
 
 export function AiStudio() {
   const [active, setActive] = useState<Tool | null>(null);
@@ -208,92 +126,140 @@ export function AiStudio() {
   );
 }
 
+type Slot = { img: HTMLImageElement; url: string; face?: FaceBox | null };
+
 function ToolView({ tool, onBack }: { tool: Tool; onBack: () => void }) {
   const [prompt, setPrompt] = useState("");
-  const [style, setStyle] = useState("oil");
-  const [imgA, setImgA] = useState<HTMLImageElement | null>(null);
-  const [imgB, setImgB] = useState<HTMLImageElement | null>(null);
+  const [style, setStyle] = useState("vangogh");
+  const [factor, setFactor] = useState<2 | 4>(2);
+  const [bgColor, setBgColor] = useState("none");
+  const [a, setA] = useState<Slot | null>(null);
+  const [b, setB] = useState<Slot | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pct, setPct] = useState(0);
   const [status, setStatus] = useState("");
   const [result, setResult] = useState<string | null>(null);
-  const refA = useRef<HTMLInputElement>(null);
-  const refB = useRef<HTMLInputElement>(null);
+  const [cutout, setCutout] = useState<HTMLCanvasElement | null>(null);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const pick = async (file: File | undefined, slot: "a" | "b") => {
-    if (!file) return;
+  useEffect(() => () => void (timer.current && clearInterval(timer.current)), []);
+
+  const creep = (to: number, step = 2) => {
+    if (timer.current) clearInterval(timer.current);
+    timer.current = setInterval(() => setPct((p) => (p >= to ? p : Math.min(to, p + step))), 160);
+  };
+  const stopCreep = () => {
+    if (timer.current) clearInterval(timer.current);
+    timer.current = null;
+  };
+
+  const needs = tool.id === "generate" ? 0 : tool.id === "faceswap" ? 2 : 1;
+
+  const pick = async (file: File, slot: "a" | "b") => {
+    if (!file.type.startsWith("image/")) return toast.error("That file isn't a photo");
+    if (file.size > 25 * 1024 * 1024) return toast.error("That photo is too large — max 25 MB");
     try {
       const img = await loadImageFromFile(file);
-      (slot === "a" ? setImgA : setImgB)(img);
+      if ((img.width * img.height) / 1e6 > MAX_MP)
+        return toast.error("That photo is too big to process — try a smaller one");
+      const next: Slot = { img, url: img.src };
+      if (tool.id === "faceswap") {
+        next.face = await detectFace(img);
+        if (!next.face) toast.error("No face detected, try another photo");
+      }
+      (slot === "a" ? setA : setB)(next);
       setResult(null);
+      setCutout(null);
     } catch {
-      toast.error("That file couldn't be opened as a photo");
+      toast.error("That photo couldn't be opened");
     }
   };
 
   const ready =
-    tool.inputs === 0 ? prompt.trim().length > 0 : tool.inputs === 1 ? !!imgA : !!imgA && !!imgB;
+    needs === 0 ? prompt.trim().length > 2 : needs === 1 ? !!a : !!a?.face && !!b?.face;
+
+  const composeBg = (cut: HTMLCanvasElement, color: string | null) => {
+    if (!color) return canvasUrl(cut);
+    const c = document.createElement("canvas");
+    c.width = cut.width;
+    c.height = cut.height;
+    const ctx = c.getContext("2d")!;
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(cut, 0, 0);
+    return canvasUrl(c);
+  };
 
   const run = async () => {
     if (!ready || busy) return;
     setBusy(true);
     setResult(null);
-    setStatus("AI Processing…");
+    setPct(3);
     try {
-      await wait(300);
-      let out: HTMLCanvasElement;
       switch (tool.id) {
-        case "generate":
-          await wait(1200);
-          out = mockGenerate(prompt);
+        case "generate": {
+          setStatus("Painting your idea with AI…");
+          creep(92, 2);
+          setResult(await generateImage(prompt.trim()));
           break;
-        case "removebg":
-          setStatus("AI Processing… cutting out the subject");
-          out = await removeBackground(imgA!, (r) =>
-            setStatus(`AI Processing… ${Math.round(r * 100)}%`),
-          );
+        }
+        case "removebg": {
+          setStatus("Removing background with AI…");
+          const cut = await removeBackground(a!.img, (r) => setPct(Math.round(r * 100)));
+          setCutout(cut);
+          setResult(composeBg(cut, BG_COLORS.find((x) => x.id === bgColor)?.value ?? null));
           break;
-        case "faceswap":
-          await wait(900);
-          out = mockFaceSwap(imgA!, imgB!);
+        }
+        case "faceswap": {
+          setStatus("Swapping faces with AI…");
+          creep(90, 6);
+          await new Promise((r) => setTimeout(r, 500));
+          setResult(canvasUrl(swapFaces(a!.img, a!.face!, b!.img, b!.face!)));
           break;
-        case "enhance":
-          await wait(400);
-          out = upscaleEnhance(imgA!, 2);
+        }
+        case "enhance": {
+          setStatus(`Enhancing to ${factor === 4 ? "4K" : "HD"}…`);
+          creep(85, 5);
+          await new Promise((r) => setTimeout(r, 250));
+          setResult(canvasUrl(upscaleEnhance(a!.img, factor)));
           break;
-        case "style":
-          await wait(400);
-          out = applyArtStyle(imgA!, style, 1);
+        }
+        case "style": {
+          const s = ART_STYLES.find((x) => x.id === style)!;
+          setStatus(`Applying ${s.name} magic…`);
+          creep(88, 3);
+          try {
+            setResult(await stylizeWithAi(a!.url, `${s.prompt}, highly detailed artwork`));
+          } catch {
+            setResult(canvasUrl(applyArtStyle(a!.img, s.local, 1)));
+            toast.message("Used the offline art engine (AI service unavailable)");
+          }
           break;
-        default:
-          await wait(400);
-          out = applyArtStyle(imgA!, "cartoon", 1);
+        }
+        default: {
+          setStatus("Cartoonizing…");
+          creep(88, 6);
+          await new Promise((r) => setTimeout(r, 250));
+          setResult(canvasUrl(applyArtStyle(a!.img, "cartoon", 1)));
+        }
       }
-      setResult(canvasUrl(out));
+      setPct(100);
       toast.success("Done — your result is ready");
     } catch {
-      toast.error("That didn't work. Try another photo.");
+      toast.error("That didn't work. Try again or use another photo.");
     } finally {
+      stopCreep();
       setBusy(false);
       setStatus("");
     }
   };
 
-  const uploadBox = (slot: "a" | "b", label: string, img: HTMLImageElement | null) => (
-    <button
-      type="button"
-      onClick={() => (slot === "a" ? refA : refB).current?.click()}
-      className="relative flex aspect-square w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-[20px] border border-dashed border-primary/30 bg-secondary/40 text-xs text-muted-foreground transition-colors hover:border-primary/70"
-    >
-      {img ? (
-        <img src={img.src} alt={label} className="absolute inset-0 size-full object-cover" />
-      ) : (
-        <>
-          <Upload className="size-5" />
-          {label}
-        </>
-      )}
-    </button>
-  );
+  const applyBg = (id: string) => {
+    setBgColor(id);
+    if (cutout) setResult(composeBg(cutout, BG_COLORS.find((x) => x.id === id)?.value ?? null));
+  };
+
+  const quality = a ? Math.min(99, Math.round((Math.min(a.img.width, a.img.height) / 1080) * 100)) : 0;
 
   return (
     <main className="px-5 pt-8 pb-10">
@@ -314,7 +280,7 @@ function ToolView({ tool, onBack }: { tool: Tool; onBack: () => void }) {
 
       <p className="mt-4 text-xs text-muted-foreground">{tool.blurb}</p>
 
-      {tool.inputs === 0 ? (
+      {needs === 0 ? (
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
@@ -323,38 +289,51 @@ function ToolView({ tool, onBack }: { tool: Tool; onBack: () => void }) {
           className="mt-4 w-full resize-none rounded-[20px] border border-border bg-secondary/60 p-4 text-sm outline-none placeholder:text-muted-foreground focus:border-primary/60"
         />
       ) : (
-        <div className={cn("mt-4 grid gap-3", tool.inputs === 2 ? "grid-cols-2" : "grid-cols-1")}>
-          {uploadBox("a", tool.inputs === 2 ? "Base photo" : "Upload a photo", imgA)}
-          {tool.inputs === 2 && uploadBox("b", "Face photo", imgB)}
+        <div className={cn("mt-4 grid gap-3", needs === 2 ? "grid-cols-2" : "grid-cols-1")}>
+          <FaceSlot
+            label={needs === 2 ? "Target photo" : "Upload a photo"}
+            slot={a}
+            showFace={tool.id === "faceswap"}
+            onFile={(f) => void pick(f, "a")}
+          />
+          {needs === 2 && (
+            <FaceSlot label="Source face" slot={b} showFace onFile={(f) => void pick(f, "b")} />
+          )}
         </div>
       )}
 
-      <input
-        ref={refA}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          e.target.value = "";
-          void pick(f, "a");
-        }}
-      />
-      <input
-        ref={refB}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          e.target.value = "";
-          void pick(f, "b");
-        }}
-      />
+      {tool.id === "enhance" && a && (
+        <div className="glass-card mt-4 p-4">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold">Current quality</span>
+            <span className="brand-text font-bold">{quality}%</span>
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {a.img.width} × {a.img.height} → {a.img.width * factor} × {a.img.height * factor}
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {([2, 4] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFactor(f)}
+                className={cn(
+                  "rounded-2xl border px-2 py-2.5 text-[11px] font-semibold transition-colors",
+                  factor === f
+                    ? "border-primary bg-primary/15 text-primary"
+                    : "border-border bg-secondary/60 text-muted-foreground",
+                )}
+              >
+                {f}× {f === 4 ? "4K" : "HD"}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {tool.id === "style" && (
         <div className="mt-4 grid grid-cols-3 gap-2">
-          {STYLES.map((s) => (
+          {ART_STYLES.map((s) => (
             <button
               key={s.id}
               type="button"
@@ -379,26 +358,90 @@ function ToolView({ tool, onBack }: { tool: Tool; onBack: () => void }) {
         className="gradient-pill mt-5 flex w-full items-center justify-center gap-2 px-6 py-4 text-sm font-semibold disabled:opacity-50"
       >
         {busy ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-        {busy ? status || "AI Processing…" : `Run ${tool.title}`}
+        {busy ? status : `Run ${tool.title}`}
       </button>
+
+      {busy && <ProgressBar value={pct} label={status} />}
 
       {result && (
         <div className="glass-card mt-5 p-4">
           <p className="text-xs font-semibold">Result</p>
-          <img
-            src={result}
-            alt={`${tool.title} result`}
-            className="mt-3 w-full rounded-2xl border border-border"
-          />
-          <a
-            href={result}
-            download={`${tool.id}-result.png`}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-secondary px-3 py-3 text-xs font-semibold"
-          >
-            <Download className="size-4" /> Download result
-          </a>
+
+          {tool.id === "removebg" && (
+            <div className="mt-3 grid grid-cols-6 gap-2">
+              {BG_COLORS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  aria-label={`Background ${c.name}`}
+                  onClick={() => applyBg(c.id)}
+                  className={cn(
+                    "aspect-square rounded-full border-2 transition-all",
+                    bgColor === c.id ? "border-primary" : "border-border",
+                    !c.value && "checkerboard",
+                  )}
+                  style={c.value ? { background: c.value } : undefined}
+                />
+              ))}
+            </div>
+          )}
+
+          <div className="mt-3">
+            {a ? (
+              <BeforeAfter before={a.url} after={result} checkered={tool.id === "removebg"} />
+            ) : (
+              <img
+                src={result}
+                alt={`${tool.title} result`}
+                className="w-full rounded-2xl border border-border"
+              />
+            )}
+          </div>
+
+          <ResultActions url={result} name={`${tool.id}-result.png`} />
         </div>
       )}
     </main>
+  );
+}
+
+function FaceSlot({
+  label,
+  slot,
+  showFace,
+  onFile,
+}: {
+  label: string;
+  slot: Slot | null;
+  showFace?: boolean;
+  onFile: (f: File) => void;
+}) {
+  return (
+    <div className="relative">
+      <DropZone label={label} preview={slot?.url ?? null} onFile={onFile} />
+      {showFace && slot && (
+        <>
+          {slot.face && (
+            <span
+              className="pointer-events-none absolute rounded-lg border-2 border-neon-pink"
+              style={{
+                left: `${(slot.face.x / slot.img.width) * 100}%`,
+                top: `${(slot.face.y / slot.img.height) * 100}%`,
+                width: `${(slot.face.w / slot.img.width) * 100}%`,
+                height: `${(slot.face.h / slot.img.height) * 100}%`,
+              }}
+            />
+          )}
+          <span
+            className={cn(
+              "absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+              slot.face ? "bg-primary/80" : "bg-destructive/80",
+            )}
+          >
+            {slot.face ? "Face detected" : "No face detected"}
+          </span>
+        </>
+      )}
+    </div>
   );
 }
