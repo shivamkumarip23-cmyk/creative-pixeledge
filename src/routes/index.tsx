@@ -68,18 +68,23 @@ function Index() {
       openPicker();
       return;
     }
-    if ((key === "edit" || key === "ai") && !image) {
+    if (key === "edit" && !image) {
       toast.info("Choose a photo first");
-      openPicker(key === "ai" ? "AI" : "Filters");
+      openPicker("Filters");
       return;
     }
     setNav(key);
     if (key === "edit") setFocusTab("Filters");
-    if (key === "ai") setFocusTab("AI");
   };
 
   let screen: React.ReactNode;
-  if (nav === "home" || !image) {
+  if (nav === "ai") {
+    screen = (
+      <div className="no-scrollbar h-full overflow-y-auto pb-28">
+        <AiStudio />
+      </div>
+    );
+  } else if (nav === "home" || !image) {
     screen = (
       <div className="no-scrollbar h-full overflow-y-auto pb-28">
         <HomeScreen onOpenPicker={openPicker} theme={theme} onToggleTheme={toggleTheme} />
