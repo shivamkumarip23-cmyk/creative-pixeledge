@@ -1,23 +1,11 @@
-/** Free text-to-image via Pollinations (no API key). Falls back to a local
- *  procedural artwork when the network is unavailable, so it always returns. */
+import { generateImageServer } from "./generate.functions";
 
-export async function generateImage(
-  prompt: string,
-  opts: { width?: number; height?: number; seed?: number } = {},
-): Promise<string> {
-  const width = opts.width ?? 1024;
-  const height = opts.height ?? 1024;
-  const seed = opts.seed ?? Math.floor(Math.random() * 1_000_000);
-  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(
-    prompt,
-  )}?width=${width}&height=${height}&nologo=true&model=flux&seed=${seed}`;
-
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("generation failed");
-  const blob = await res.blob();
-  if (!blob.type.startsWith("image/")) throw new Error("generation failed");
-  return await blobToDataUrl(blob);
+/** Text-to-image using a real AI model (FLUX.1-schnell) on our own server. */
+export async function generateImage(prompt: string): Promise<string> {
+  const { dataUrl } = await generateImageServer({ data: { prompt } });
+  return dataUrl;
 }
+
 
 /** Image-to-image style rendering through Pollinations, using the source photo
  *  as a reference image. Throws when offline so callers can fall back locally. */
