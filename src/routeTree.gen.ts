@@ -10,33 +10,43 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicMusicPreviewRouteImport } from './routes/api/public/music-preview'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicMusicPreviewRoute = ApiPublicMusicPreviewRouteImport.update({
+  id: '/api/public/music-preview',
+  path: '/api/public/music-preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/public/music-preview': typeof ApiPublicMusicPreviewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/public/music-preview': typeof ApiPublicMusicPreviewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/public/music-preview': typeof ApiPublicMusicPreviewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/api/public/music-preview'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/api/public/music-preview'
+  id: '__root__' | '/' | '/api/public/music-preview'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiPublicMusicPreviewRoute: typeof ApiPublicMusicPreviewRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +58,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/music-preview': {
+      id: '/api/public/music-preview'
+      path: '/api/public/music-preview'
+      fullPath: '/api/public/music-preview'
+      preLoaderRoute: typeof ApiPublicMusicPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiPublicMusicPreviewRoute: ApiPublicMusicPreviewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
