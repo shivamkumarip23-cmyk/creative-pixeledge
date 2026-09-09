@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Music4, Pause, Play, Plus, Search, Upload } from "lucide-react";
+import { Film, Loader2, Music4, Pause, Play, Plus, Search, Upload } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { searchMusic, type Track } from "@/lib/music/itunes.functions";
+import { proxiedAudioUrl } from "@/lib/photo/music/video";
 import { cn } from "@/lib/utils";
 
 const TABS: { id: string; term: string }[] = [
@@ -14,7 +15,15 @@ const TABS: { id: string; term: string }[] = [
   { id: "Trending", term: "trending viral songs" },
 ];
 
-export function MusicPanel({ onAdd }: { onAdd: (label: string) => void }) {
+export function MusicPanel({
+  onAdd,
+  onCreateVideo,
+  videoProgress,
+}: {
+  onAdd: (label: string) => void;
+  onCreateVideo: (audioUrl: string, label: string) => void;
+  videoProgress: number | null;
+}) {
   const search = useServerFn(searchMusic);
   const [tab, setTab] = useState("All");
   const [query, setQuery] = useState("");
@@ -23,6 +32,7 @@ export function MusicPanel({ onAdd }: { onAdd: (label: string) => void }) {
   const [playing, setPlaying] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [uploaded, setUploaded] = useState<{ url: string; label: string } | null>(null);
 
   const term = useMemo(
     () => (query.trim() ? query.trim() : (TABS.find((t) => t.id === tab)?.term ?? "top hits")),
@@ -65,7 +75,7 @@ export function MusicPanel({ onAdd }: { onAdd: (label: string) => void }) {
       return;
     }
     audioRef.current?.pause();
-    const audio = new Audio(url);
+    const audio = new Audio(proxiedAudioUrl(url));
     audio.volume = 0.9;
     audio.onended = () => setPlaying(null);
     void audio.play().catch(() => toast.error("Preview couldn't play"));
@@ -80,8 +90,10 @@ export function MusicPanel({ onAdd }: { onAdd: (label: string) => void }) {
     void audio.play().catch(() => undefined);
     audioRef.current = audio;
     setPlaying("upload");
-    onAdd(file.name.replace(/\.[^.]+$/, ""));
-    toast.success("Song from your phone added");
+    const label = file.name.replace(/\.[^.]+$/, "");
+    setUploaded({ url, label });
+    onAdd(label);
+    toast.success("Song from your phone added — tap Make video to export it");
   };
 
   return (
@@ -138,6 +150,30 @@ export function MusicPanel({ onAdd }: { onAdd: (label: string) => void }) {
         ))}
       </div>
 
+      {uploaded && (
+        <div className="flex items-center gap-2 rounded-2xl border border-primary/40 bg-primary/10 p-2 text-xs">
+          <Music4 className="size-4 shrink-0 text-primary" />
+          <span className="min-w-0 flex-1 truncate font-medium">{uploaded.label}</span>
+          <button
+            type="button"
+            disabled={videoProgress !== null}
+            onClick={() => onCreateVideo(uploaded.url, uploaded.label)}
+            className="gradient-pill flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold disabled:opacity-40"
+          >
+            <Film className="size-3" /> Make video
+          </button>
+        </div>
+      )}
+
+      {videoProgress !== null && (
+        <div className="rounded-2xl border border-border bg-secondary p-3">
+          <p className="mb-2 text-xs font-medium">Making your 15s video… {videoProgress}%</p>
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+            <div className="h-full gradient-pill transition-all" style={{ width: `${videoProgress}%` }} />
+          </div>
+        </div>
+      )}
+
       <div className="no-scrollbar max-h-64 space-y-2 overflow-y-auto pr-1">
         {loading && (
           <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
@@ -169,13 +205,23 @@ export function MusicPanel({ onAdd }: { onAdd: (label: string) => void }) {
                 <p className="truncate text-sm font-semibold">{t.title}</p>
                 <p className="truncate text-xs text-muted-foreground">{t.artist}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => onAdd(`${t.title} · ${t.artist}`)}
-                className="gradient-pill flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold"
-              >
-                <Plus className="size-3.5" /> Add
-              </button>
+              <div className="flex shrink-0 flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={() => onAdd(`${t.title} · ${t.artist}`)}
+                  className="flex items-center justify-center gap-1 rounded-full border border-border bg-secondary px-3 py-1 text-[11px] font-semibold"
+                >
+                  <Plus className="size-3" /> Label
+                </button>
+                <button
+                  type="button"
+                  disabled={!t.preview || videoProgress !== null}
+                  onClick={() => t.preview && onCreateVideo(t.preview, `${t.title} · ${t.artist}`)}
+                  className="gradient-pill flex items-center justify-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold disabled:opacity-40"
+                >
+                  <Film className="size-3" /> Video
+                </button>
+              </div>
             </div>
           ))}
         {!loading && !tracks.length && (

@@ -61,6 +61,7 @@ import { TextPanel } from "./TextPanel";
 import { StickerPanel } from "./StickerPanel";
 import { DrawPanel } from "./DrawPanel";
 import { MusicPanel } from "./MusicPanel";
+import { recordPhotoVideo } from "@/lib/photo/music/video";
 import { AiPanel, type AiTool } from "./AiPanel";
 import { MaskLayer, buildMaskCanvas, type MaskStroke } from "./MaskLayer";
 
@@ -497,8 +498,8 @@ export function Editor({
     setTab("Text");
   };
 
-  const addMusic = (label: string) => {
-    const item: TextItem = {
+  const musicItem = (label: string): TextItem => {
+    return {
       id: uid(),
       kind: "text",
       text: `\u266A  ${label}`,
@@ -515,8 +516,44 @@ export function Editor({
       bold: true,
       italic: false,
     };
+  };
+
+  const addMusic = (label: string) => {
+    const item = musicItem(label);
     commit({ ...state, overlays: { ...state.overlays, items: [...state.overlays.items, item] } });
     setSelectedId(item.id);
+  };
+
+  const [videoProgress, setVideoProgress] = useState<number | null>(null);
+
+  const createMusicVideo = async (audioUrl: string, label: string) => {
+    setVideoProgress(0);
+    try {
+      const hasLabel = state.overlays.items.some(
+        (i) => i.kind === "text" && (i as TextItem).text.includes(label),
+      );
+      const next = hasLabel
+        ? state
+        : {
+            ...state,
+            overlays: { ...state.overlays, items: [...state.overlays.items, musicItem(label)] },
+          };
+      if (!hasLabel) commit(next);
+      const canvas = document.createElement("canvas");
+      renderToCanvas(canvas, base, next, 1080);
+      const { blob, ext } = await recordPhotoVideo({
+        source: canvas,
+        audioUrl,
+        durationMs: 15000,
+        onProgress: setVideoProgress,
+      });
+      saveBlob(blob, ext);
+      toast.success("Video with music saved to your downloads");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not make the video");
+    } finally {
+      setVideoProgress(null);
+    }
   };
 
   const addSticker = (char: string) => {
@@ -908,7 +945,13 @@ export function Editor({
 
           {tab === "Stickers" && <StickerPanel onAdd={addSticker} />}
 
-          {tab === "Music" && <MusicPanel onAdd={addMusic} />}
+          {tab === "Music" && (
+            <MusicPanel
+              onAdd={addMusic}
+              onCreateVideo={createMusicVideo}
+              videoProgress={videoProgress}
+            />
+          )}
 
           {tab === "Draw" && (
             <DrawPanel
