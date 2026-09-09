@@ -21,6 +21,7 @@ import {
   Download,
   RefreshCw,
   Wand2,
+  Music4,
 
 } from "lucide-react";
 import { toast } from "sonner";
@@ -59,6 +60,7 @@ import { OverlayLayer, type BrushSettings } from "./OverlayLayer";
 import { TextPanel } from "./TextPanel";
 import { StickerPanel } from "./StickerPanel";
 import { DrawPanel } from "./DrawPanel";
+import { MusicPanel } from "./MusicPanel";
 import { AiPanel, type AiTool } from "./AiPanel";
 import { MaskLayer, buildMaskCanvas, type MaskStroke } from "./MaskLayer";
 
@@ -74,6 +76,7 @@ type Tab =
   | "Text"
   | "Stickers"
   | "Draw"
+  | "Music"
   | "AI";
 const TABS: { id: Tab; icon: typeof Crop }[] = [
   { id: "AI", icon: Wand2 },
@@ -81,6 +84,7 @@ const TABS: { id: Tab; icon: typeof Crop }[] = [
   { id: "Filters", icon: Sparkles },
   { id: "Text", icon: Type },
   { id: "Stickers", icon: Smile },
+  { id: "Music", icon: Music4 },
   { id: "Draw", icon: Brush },
   { id: "Light", icon: Sun },
   { id: "Color", icon: SlidersHorizontal },
@@ -493,6 +497,28 @@ export function Editor({
     setTab("Text");
   };
 
+  const addMusic = (label: string) => {
+    const item: TextItem = {
+      id: uid(),
+      kind: "text",
+      text: `\u266A  ${label}`,
+      x: 0.5,
+      y: 0.12,
+      size: 0.045,
+      rotation: 0,
+      font: "Poppins",
+      color: "#ffffff",
+      strokeColor: "#000000",
+      strokeWidth: 0,
+      shadow: 0.6,
+      opacity: 1,
+      bold: true,
+      italic: false,
+    };
+    commit({ ...state, overlays: { ...state.overlays, items: [...state.overlays.items, item] } });
+    setSelectedId(item.id);
+  };
+
   const addSticker = (char: string) => {
     const item: StickerItem = {
       id: uid(),
@@ -881,6 +907,8 @@ export function Editor({
           )}
 
           {tab === "Stickers" && <StickerPanel onAdd={addSticker} />}
+
+          {tab === "Music" && <MusicPanel onAdd={addMusic} />}
 
           {tab === "Draw" && (
             <DrawPanel
