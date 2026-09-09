@@ -22,19 +22,23 @@ function pickMimeType() {
 export type VideoResult = { blob: Blob; ext: string };
 
 export async function recordPhotoVideo({
-  canvas,
+  source,
   audioUrl,
   durationMs = 15000,
   onProgress,
 }: {
-  canvas: HTMLCanvasElement;
+  source: HTMLCanvasElement;
   audioUrl: string;
   durationMs?: number;
   onProgress?: (pct: number) => void;
 }): Promise<VideoResult> {
   if (typeof MediaRecorder === "undefined") throw new Error("Recording isn't supported here");
 
-  // Keep painting the still frame so the canvas stream produces frames.
+  // Repaint the still frame every animation frame so the stream produces frames.
+  const canvas = document.createElement("canvas");
+  canvas.width = source.width;
+  canvas.height = source.height;
+  const paintCtx = canvas.getContext("2d")!;
   const stream = canvas.captureStream(30);
 
   const audio = new Audio();
@@ -73,6 +77,7 @@ export async function recordPhotoVideo({
   const started = performance.now();
   await new Promise<void>((resolve) => {
     const tick = () => {
+      paintCtx.drawImage(source, 0, 0);
       const elapsed = performance.now() - started;
       onProgress?.(Math.min(99, Math.round((elapsed / durationMs) * 100)));
       if (elapsed >= durationMs) resolve();
