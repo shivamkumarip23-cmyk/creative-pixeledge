@@ -117,6 +117,7 @@ function RootShell({ children }: { children: ReactNode }) {
       <body>
         {children}
         <Scripts />
+        <div id="desktop-sidebar-root" />
       </body>
     </html>
   );
