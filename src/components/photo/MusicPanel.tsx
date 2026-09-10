@@ -99,7 +99,11 @@ export function MusicPanel({
     audioRef.current?.pause();
     const url = URL.createObjectURL(file);
     const audio = new Audio(url);
-    void audio.play().catch(() => undefined);
+    audio.onerror = () => {
+      URL.revokeObjectURL(url);
+      playSrc(FALLBACK_MUSIC, "upload");
+    };
+    void audio.play().catch(() => playSrc(FALLBACK_MUSIC, "upload"));
     audioRef.current = audio;
     setPlaying("upload");
     const label = file.name.replace(/\.[^.]+$/, "");
