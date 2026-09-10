@@ -31,6 +31,7 @@ export function MusicPanel({
   const [loading, setLoading] = useState(false);
   const [playing, setPlaying] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fallbackRequested = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploaded, setUploaded] = useState<{ url: string; label: string } | null>(null);
 
