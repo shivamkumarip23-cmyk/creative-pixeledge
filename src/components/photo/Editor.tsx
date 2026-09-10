@@ -193,8 +193,9 @@ export function Editor({
     if (!el) return;
     const measure = () => {
       const rect = el.getBoundingClientRect();
+      const maxPreviewH = typeof window !== "undefined" ? window.innerHeight * 0.9 : rect.height - 32;
       const availW = Math.max(40, rect.width - 32);
-      const availH = Math.max(40, rect.height - 32);
+      const availH = Math.max(40, Math.min(rect.height - 32, maxPreviewH));
       const scale = Math.min(availW / dimensions.w, availH / dimensions.h);
       setFit({ w: Math.round(dimensions.w * scale), h: Math.round(dimensions.h * scale) });
     };
