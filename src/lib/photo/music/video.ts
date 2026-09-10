@@ -12,7 +12,7 @@ export async function loadAudioWithFallback(url: string) {
   return new Promise<HTMLAudioElement>((resolve, reject) => {
     const tryLoad = (src: string) => {
       const a = new Audio();
-      a.crossOrigin = "anonymous";
+      if (src !== FALLBACK_MUSIC) a.crossOrigin = "anonymous";
       a.src = src;
       a.oncanplay = () => resolve(a);
       a.onerror = () => {
