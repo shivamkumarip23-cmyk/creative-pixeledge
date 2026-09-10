@@ -61,15 +61,8 @@ export async function recordPhotoVideo({
   const paintCtx = canvas.getContext("2d")!;
   const stream = canvas.captureStream(30);
 
-  const audio = new Audio();
-  audio.crossOrigin = "anonymous";
-  audio.src = proxiedAudioUrl(audioUrl);
+  const audio = await loadAudioWithFallback(audioUrl);
   audio.loop = true;
-  await new Promise<void>((resolve, reject) => {
-    audio.oncanplay = () => resolve();
-    audio.onerror = () => reject(new Error("Could not load this song"));
-    audio.load();
-  });
 
   const AudioCtx =
     window.AudioContext ??
