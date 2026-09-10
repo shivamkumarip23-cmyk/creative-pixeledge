@@ -64,23 +64,35 @@ export function MusicPanel({
     };
   }, []);
 
+  const playSrc = (src: string, id: string) => {
+    audioRef.current?.pause();
+    const audio = new Audio(src);
+    audio.crossOrigin = "anonymous";
+    audio.volume = 0.9;
+    audio.onended = () => setPlaying(null);
+    audio.onerror = () => {
+      if (src !== FALLBACK_MUSIC) playSrc(FALLBACK_MUSIC, id);
+      else toast.error("Preview couldn't play");
+    };
+    audio.play().then(() => setPlaying(id)).catch(() => {
+      if (src !== FALLBACK_MUSIC) playSrc(FALLBACK_MUSIC, id);
+      else toast.error("Preview couldn't play");
+    });
+    audioRef.current = audio;
+  };
+
   const toggle = (id: string, url: string | null) => {
-    if (!url) {
-      toast.info("No preview available for this song");
-      return;
-    }
     if (playing === id) {
       audioRef.current?.pause();
       setPlaying(null);
       return;
     }
-    audioRef.current?.pause();
-    const audio = new Audio(proxiedAudioUrl(url));
-    audio.volume = 0.9;
-    audio.onended = () => setPlaying(null);
-    void audio.play().catch(() => toast.error("Preview couldn't play"));
-    audioRef.current = audio;
-    setPlaying(id);
+    if (!url) {
+      toast.info("No preview available for this song");
+      playSrc(FALLBACK_MUSIC, id);
+      return;
+    }
+    playSrc(proxiedAudioUrl(url), id);
   };
 
   const uploadSong = (file: File) => {
