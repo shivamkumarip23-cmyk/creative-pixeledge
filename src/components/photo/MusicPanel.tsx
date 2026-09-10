@@ -67,7 +67,7 @@ export function MusicPanel({
   const playSrc = (src: string, id: string) => {
     audioRef.current?.pause();
     const audio = new Audio(src);
-    audio.crossOrigin = "anonymous";
+    if (src !== FALLBACK_MUSIC) audio.crossOrigin = "anonymous";
     audio.volume = 0.9;
     audio.onended = () => setPlaying(null);
     audio.onerror = () => {
