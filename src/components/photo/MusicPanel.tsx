@@ -67,18 +67,35 @@ export function MusicPanel({
 
   const playSrc = (src: string, id: string) => {
     audioRef.current?.pause();
+    fallbackRequested.current = false;
     const audio = new Audio(src);
     if (src !== FALLBACK_MUSIC) audio.crossOrigin = "anonymous";
     audio.volume = 0.9;
     audio.onended = () => setPlaying(null);
-    audio.onerror = () => {
-      if (src !== FALLBACK_MUSIC) playSrc(FALLBACK_MUSIC, id);
-      else toast.error("Preview couldn't play");
+
+    const isCurrent = () => audioRef.current === audio;
+    const goFallback = () => {
+      if (fallbackRequested.current) return;
+      fallbackRequested.current = true;
+      playSrc(FALLBACK_MUSIC, id);
     };
-    audio.play().then(() => setPlaying(id)).catch(() => {
-      if (src !== FALLBACK_MUSIC) playSrc(FALLBACK_MUSIC, id);
-      else toast.error("Preview couldn't play");
-    });
+
+    if (src === FALLBACK_MUSIC) {
+      audio.onerror = () => {
+        if (isCurrent()) toast.error("Preview couldn't play");
+      };
+      audio
+        .play()
+        .then(() => setPlaying(id))
+        .catch((err: Error) => {
+          if (isCurrent() && !err.message?.includes("interrupted by a call to pause")) {
+            toast.error("Preview couldn't play");
+          }
+        });
+    } else {
+      audio.onerror = goFallback;
+      audio.play().then(() => setPlaying(id)).catch(goFallback);
+    }
     audioRef.current = audio;
   };
 
