@@ -161,6 +161,8 @@ export function Editor({
     eyes: 0.3,
   });
   const [artStrength, setArtStrength] = useState(1);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
