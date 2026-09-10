@@ -1,8 +1,28 @@
 /** Records a still photo + a music track into a real video file (canvas + audio). */
 
+export const FALLBACK_MUSIC = "/music/background.mp3";
+
 export function proxiedAudioUrl(url: string) {
   if (url.startsWith("blob:") || url.startsWith("data:")) return url;
+  if (url.startsWith("/")) return url;
   return `/api/public/music-preview?url=${encodeURIComponent(url)}`;
+}
+
+export async function loadAudioWithFallback(url: string) {
+  return new Promise<HTMLAudioElement>((resolve, reject) => {
+    const tryLoad = (src: string) => {
+      const a = new Audio();
+      if (src !== FALLBACK_MUSIC) a.crossOrigin = "anonymous";
+      a.src = src;
+      a.oncanplay = () => resolve(a);
+      a.onerror = () => {
+        if (src !== FALLBACK_MUSIC) tryLoad(FALLBACK_MUSIC);
+        else reject(new Error("Could not load this song"));
+      };
+      a.load();
+    };
+    tryLoad(proxiedAudioUrl(url));
+  });
 }
 
 function pickMimeType() {
@@ -41,15 +61,8 @@ export async function recordPhotoVideo({
   const paintCtx = canvas.getContext("2d")!;
   const stream = canvas.captureStream(30);
 
-  const audio = new Audio();
-  audio.crossOrigin = "anonymous";
-  audio.src = proxiedAudioUrl(audioUrl);
+  const audio = await loadAudioWithFallback(audioUrl);
   audio.loop = true;
-  await new Promise<void>((resolve, reject) => {
-    audio.oncanplay = () => resolve();
-    audio.onerror = () => reject(new Error("Could not load this song"));
-    audio.load();
-  });
 
   const AudioCtx =
     window.AudioContext ??

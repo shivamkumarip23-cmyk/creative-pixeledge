@@ -3,7 +3,7 @@ import { Film, Loader2, Music4, Pause, Play, Plus, Search, Upload } from "lucide
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { searchMusic, type Track } from "@/lib/music/itunes.functions";
-import { proxiedAudioUrl } from "@/lib/photo/music/video";
+import { FALLBACK_MUSIC, proxiedAudioUrl } from "@/lib/photo/music/video";
 import { cn } from "@/lib/utils";
 
 const TABS: { id: string; term: string }[] = [
@@ -31,6 +31,7 @@ export function MusicPanel({
   const [loading, setLoading] = useState(false);
   const [playing, setPlaying] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fallbackRequested = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploaded, setUploaded] = useState<{ url: string; label: string } | null>(null);
 
@@ -64,30 +65,63 @@ export function MusicPanel({
     };
   }, []);
 
-  const toggle = (id: string, url: string | null) => {
-    if (!url) {
-      toast.info("No preview available for this song");
-      return;
+  const playSrc = (src: string, id: string) => {
+    audioRef.current?.pause();
+    fallbackRequested.current = false;
+    const audio = new Audio(src);
+    if (src !== FALLBACK_MUSIC) audio.crossOrigin = "anonymous";
+    audio.volume = 0.9;
+    audio.onended = () => setPlaying(null);
+
+    const isCurrent = () => audioRef.current === audio;
+    const goFallback = () => {
+      if (fallbackRequested.current) return;
+      fallbackRequested.current = true;
+      playSrc(FALLBACK_MUSIC, id);
+    };
+
+    if (src === FALLBACK_MUSIC) {
+      audio.onerror = () => {
+        if (isCurrent()) toast.error("Preview couldn't play");
+      };
+      audio
+        .play()
+        .then(() => setPlaying(id))
+        .catch((err: Error) => {
+          if (isCurrent() && !err.message?.includes("interrupted by a call to pause")) {
+            toast.error("Preview couldn't play");
+          }
+        });
+    } else {
+      audio.onerror = goFallback;
+      audio.play().then(() => setPlaying(id)).catch(goFallback);
     }
+    audioRef.current = audio;
+  };
+
+  const toggle = (id: string, url: string | null) => {
     if (playing === id) {
       audioRef.current?.pause();
       setPlaying(null);
       return;
     }
-    audioRef.current?.pause();
-    const audio = new Audio(proxiedAudioUrl(url));
-    audio.volume = 0.9;
-    audio.onended = () => setPlaying(null);
-    void audio.play().catch(() => toast.error("Preview couldn't play"));
-    audioRef.current = audio;
-    setPlaying(id);
+    if (!url) {
+      toast.info("No preview available for this song");
+      playSrc(FALLBACK_MUSIC, id);
+      return;
+    }
+    playSrc(proxiedAudioUrl(url), id);
   };
 
   const uploadSong = (file: File) => {
     audioRef.current?.pause();
     const url = URL.createObjectURL(file);
     const audio = new Audio(url);
-    void audio.play().catch(() => undefined);
+    audio.onerror = () => {
+      URL.revokeObjectURL(url);
+      playSrc(FALLBACK_MUSIC, "upload");
+    };
+    void audio.play().catch(() => playSrc(FALLBACK_MUSIC, "upload"));
     audioRef.current = audio;
     setPlaying("upload");
     const label = file.name.replace(/\.[^.]+$/, "");

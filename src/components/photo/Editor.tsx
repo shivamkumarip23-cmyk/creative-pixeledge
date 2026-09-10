@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowLeft,
   Brush,
@@ -160,6 +161,8 @@ export function Editor({
     eyes: 0.3,
   });
   const [artStrength, setArtStrength] = useState(1);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -190,8 +193,9 @@ export function Editor({
     if (!el) return;
     const measure = () => {
       const rect = el.getBoundingClientRect();
+      const maxPreviewH = typeof window !== "undefined" ? window.innerHeight * 0.9 : rect.height - 32;
       const availW = Math.max(40, rect.width - 32);
-      const availH = Math.max(40, rect.height - 32);
+      const availH = Math.max(40, Math.min(rect.height - 32, maxPreviewH));
       const scale = Math.min(availW / dimensions.w, availH / dimensions.h);
       setFit({ w: Math.round(dimensions.w * scale), h: Math.round(dimensions.h * scale) });
     };
@@ -605,6 +609,80 @@ export function Editor({
   const isEdited = JSON.stringify(state) !== JSON.stringify(defaultEditState);
   const layerCount = state.overlays.items.length;
 
+  const editStackSidebar = (
+    <aside className="fixed left-0 top-0 z-30 hidden h-screen w-72 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface-2 xl:flex">
+      <div className="border-b border-border px-4 py-3">
+        <h2 className="text-xs font-semibold tracking-widest text-muted-foreground">EDIT STACK</h2>
+      </div>
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
+        <button
+          type="button"
+          onClick={() => setTab("AI")}
+          className={cn(
+            "flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors",
+            tab === "AI"
+              ? "bg-primary text-primary-foreground"
+              : "border border-border bg-secondary hover:bg-muted",
+          )}
+        >
+          <Wand2 className="size-4" /> AI Tools
+        </button>
+        <StackRow label="Base photo" value={`${base.width} × ${base.height}`} />
+        <StackRow label="Filter" value={activePreset?.name ?? "Original"} />
+        <StackRow
+          label="Geometry"
+          value={`${state.geometry.rotation}°${state.geometry.flipH ? " · flip H" : ""}${
+            state.geometry.flipV ? " · flip V" : ""
+          }`}
+        />
+        <StackRow label="History" value={`${past.length} step${past.length === 1 ? "" : "s"}`} />
+
+        {layerCount > 0 && (
+          <div className="space-y-1.5 pt-2">
+            <p className="text-[10px] font-semibold tracking-widest text-muted-foreground">LAYERS</p>
+            {state.overlays.items
+              .slice()
+              .reverse()
+              .map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedId(item.id);
+                    setTab(item.kind === "text" ? "Text" : "Stickers");
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition-colors",
+                    selectedId === item.id
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border bg-secondary hover:bg-muted",
+                  )}
+                >
+                  <span className="truncate">{item.kind === "text" ? item.text || "Text" : item.char}</span>
+                  <span className="text-muted-foreground">{item.kind}</span>
+                </button>
+              ))}
+          </div>
+        )}
+        {state.overlays.strokes.length > 0 && (
+          <StackRow label="Brush strokes" value={`${state.overlays.strokes.length}`} />
+        )}
+
+        <button
+          type="button"
+          disabled={!isEdited}
+          onClick={() => {
+            commit(defaultEditState);
+            setSelectedId(null);
+          }}
+          className="mt-2 w-full rounded-xl border border-border bg-secondary px-3 py-2 text-xs font-medium transition-colors hover:bg-muted disabled:opacity-40"
+        >
+          Reset all edits
+        </button>
+      </div>
+    </aside>
+  );
+
   return (
     <div
       className={cn(
@@ -783,85 +861,8 @@ export function Editor({
           </span>
         </div>
 
-        {/* Right panel */}
-        <aside className="hidden w-72 shrink-0 flex-col border-l border-border bg-surface-2 lg:flex">
-          <div className="border-b border-border px-4 py-3">
-            <h2 className="text-xs font-semibold tracking-widest text-muted-foreground">
-              EDIT STACK
-            </h2>
-          </div>
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
-            <button
-              type="button"
-              onClick={() => setTab("AI")}
-              className={cn(
-                "flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors",
-                tab === "AI"
-                  ? "bg-primary text-primary-foreground"
-                  : "border border-border bg-secondary hover:bg-muted",
-              )}
-            >
-              <Wand2 className="size-4" /> AI Tools
-            </button>
-            <StackRow label="Base photo" value={`${base.width} × ${base.height}`} />
-
-            <StackRow label="Filter" value={activePreset?.name ?? "Original"} />
-            <StackRow
-              label="Geometry"
-              value={`${state.geometry.rotation}°${state.geometry.flipH ? " · flip H" : ""}${
-                state.geometry.flipV ? " · flip V" : ""
-              }`}
-            />
-            <StackRow label="History" value={`${past.length} step${past.length === 1 ? "" : "s"}`} />
-
-            {layerCount > 0 && (
-              <div className="space-y-1.5 pt-2">
-                <p className="text-[10px] font-semibold tracking-widest text-muted-foreground">
-                  LAYERS
-                </p>
-                {state.overlays.items
-                  .slice()
-                  .reverse()
-                  .map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedId(item.id);
-                        setTab(item.kind === "text" ? "Text" : "Stickers");
-                      }}
-                      className={cn(
-                        "flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition-colors",
-                        selectedId === item.id
-                          ? "border-primary bg-primary/15 text-primary"
-                          : "border-border bg-secondary hover:bg-muted",
-                      )}
-                    >
-                      <span className="truncate">
-                        {item.kind === "text" ? item.text || "Text" : item.char}
-                      </span>
-                      <span className="text-muted-foreground">{item.kind}</span>
-                    </button>
-                  ))}
-              </div>
-            )}
-            {state.overlays.strokes.length > 0 && (
-              <StackRow label="Brush strokes" value={`${state.overlays.strokes.length}`} />
-            )}
-
-            <button
-              type="button"
-              disabled={!isEdited}
-              onClick={() => {
-                commit(defaultEditState);
-                setSelectedId(null);
-              }}
-              className="mt-2 w-full rounded-xl border border-border bg-secondary px-3 py-2 text-xs font-medium transition-colors hover:bg-muted disabled:opacity-40"
-            >
-              Reset all edits
-            </button>
-          </div>
-        </aside>
+        {/* Right panel (portal'd outside the phone frame on desktop) */}
+        {mounted && createPortal(editStackSidebar, document.getElementById("desktop-sidebar-root")!)}
       </div>
 
       {/* Bottom toolbar */}

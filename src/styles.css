@@ -171,6 +171,13 @@
     border-color: var(--color-border);
   }
 
+  html,
+  body {
+    margin: 0;
+    overflow: hidden;
+    height: 100%;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
