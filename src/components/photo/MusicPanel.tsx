@@ -3,7 +3,7 @@ import { Film, Loader2, Music4, Pause, Play, Plus, Search, Upload } from "lucide
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { searchMusic, type Track } from "@/lib/music/itunes.functions";
-import { proxiedAudioUrl } from "@/lib/photo/music/video";
+import { FALLBACK_MUSIC, proxiedAudioUrl } from "@/lib/photo/music/video";
 import { cn } from "@/lib/utils";
 
 const TABS: { id: string; term: string }[] = [
