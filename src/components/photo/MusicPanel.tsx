@@ -67,50 +67,42 @@ export function MusicPanel({
 
   const playSrc = (src: string, id: string) => {
     audioRef.current?.pause();
-    fallbackRequested.current = false;
     const audio = new Audio(src);
     if (src !== FALLBACK_MUSIC) audio.crossOrigin = "anonymous";
     audio.volume = 0.9;
     audio.onended = () => setPlaying(null);
 
     const isCurrent = () => audioRef.current === audio;
-    const goFallback = () => {
-      if (fallbackRequested.current) return;
-      fallbackRequested.current = true;
-      playSrc(FALLBACK_MUSIC, id);
+    const next = src === FALLBACK_MUSIC ? CDN_MUSIC : src === CDN_MUSIC ? null : FALLBACK_MUSIC;
+    let switched = false;
+    const goNext = () => {
+      if (switched) return;
+      switched = true;
+      if (next) playSrc(next, id);
+      else if (isCurrent()) toast.error("Preview couldn't play");
     };
 
-    if (src === FALLBACK_MUSIC) {
-      audio.onerror = () => {
-        if (isCurrent()) toast.error("Preview couldn't play");
-      };
-      audio
-        .play()
-        .then(() => setPlaying(id))
-        .catch((err: Error) => {
-          if (isCurrent() && !err.message?.includes("interrupted by a call to pause")) {
-            toast.error("Preview couldn't play");
-          }
-        });
-    } else {
-      audio.onerror = goFallback;
-      audio.play().then(() => setPlaying(id)).catch(goFallback);
-    }
+    audio.onerror = goNext;
+    audio
+      .play()
+      .then(() => setPlaying(id))
+      .catch((err: Error) => {
+        if (err.message?.includes("interrupted by a call to pause")) return;
+        goNext();
+      });
     audioRef.current = audio;
   };
 
-  const toggle = (id: string, url: string | null) => {
+  const toggle = (id: string, url: string | null, label: string) => {
     if (playing === id) {
       audioRef.current?.pause();
       setPlaying(null);
       return;
     }
-    if (!url) {
-      toast.info("No preview available for this song");
-      playSrc(FALLBACK_MUSIC, id);
-      return;
-    }
-    playSrc(proxiedAudioUrl(url), id);
+    const src = url ? proxiedAudioUrl(url) : FALLBACK_MUSIC;
+    if (!url) toast.info("No preview available — using the sample track");
+    onSelectMusic?.({ name: label, src });
+    playSrc(src, id);
   };
 
   const uploadSong = (file: File) => {
