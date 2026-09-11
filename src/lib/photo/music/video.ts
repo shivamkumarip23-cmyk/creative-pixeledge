@@ -10,19 +10,22 @@ export function proxiedAudioUrl(url: string) {
 }
 
 export async function loadAudioWithFallback(url: string) {
+  const chain = [proxiedAudioUrl(url), FALLBACK_MUSIC, CDN_MUSIC];
   return new Promise<HTMLAudioElement>((resolve, reject) => {
-    const tryLoad = (src: string) => {
+    const tryLoad = (index: number) => {
+      const src = chain[index];
+      if (!src) {
+        reject(new Error("Could not load this song"));
+        return;
+      }
       const a = new Audio();
       if (src !== FALLBACK_MUSIC) a.crossOrigin = "anonymous";
       a.src = src;
       a.oncanplay = () => resolve(a);
-      a.onerror = () => {
-        if (src !== FALLBACK_MUSIC) tryLoad(FALLBACK_MUSIC);
-        else reject(new Error("Could not load this song"));
-      };
+      a.onerror = () => tryLoad(index + 1);
       a.load();
     };
-    tryLoad(proxiedAudioUrl(url));
+    tryLoad(0);
   });
 }
 
