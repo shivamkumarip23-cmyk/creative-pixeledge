@@ -59,6 +59,10 @@ function Index() {
       setNav("ai");
       return;
     }
+    if (tab === "Collage") {
+      setNav("collage");
+      return;
+    }
     if (photos.length >= MAX_PHOTOS) {
       toast.info("You can keep up to 4 photos in the timeline");
       return;
