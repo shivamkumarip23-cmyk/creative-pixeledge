@@ -897,8 +897,22 @@ export function Editor({
         {mounted && createPortal(editStackSidebar, document.getElementById("desktop-sidebar-root")!)}
       </div>
 
+      {/* Timeline — photos track + music track */}
+      <Timeline
+        photos={photos.map((p) => ({ id: p.id, name: p.name, src: p.img.src }))}
+        activeId={activeId}
+        onSelect={(id) => onSelectPhoto?.(id)}
+        onAdd={() => onAddPhoto?.()}
+        onRemove={(id) => onRemovePhoto?.(id)}
+        onReorder={(from, to) => onReorderPhotos?.(from, to)}
+        music={selectedMusic}
+        onRemoveMusic={() => setSelectedMusic(null)}
+        onPickMusic={() => setTab("Music")}
+        max={maxPhotos}
+      />
+
       {/* Bottom toolbar */}
-      <section className="border-t border-border bg-surface-2">
+      <section className="min-h-0 border-t border-border bg-surface-2">
         <div className="max-h-64 overflow-y-auto px-3 py-3 sm:px-4">
           {tab === "Filters" && (
             <div className="space-y-3">
