@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AiStudio } from "@/components/photo/AiStudio";
+import { CollagePage } from "@/components/photo/CollagePage";
 import { Editor } from "@/components/photo/Editor";
 import { HomeScreen } from "@/components/photo/HomeScreen";
 import { WelcomeScreen } from "@/components/photo/WelcomeScreen";
@@ -16,13 +17,13 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Edit photos with Lightroom-style sliders, 60+ filters, AI background removal, text, stickers and high-resolution JPG, PNG or WebP export.",
+          "Edit photos with Lightroom-style sliders, 60+ filters, AI background removal, collage templates, music videos and HD export.",
       },
       { property: "og:title", content: "PhotoPro Editor — Pro photo editing in your browser" },
       {
         property: "og:description",
         content:
-          "Pro adjustments, 60+ filters, AI tools and HD export — all running locally in your browser.",
+          "Pro adjustments, 60+ filters, 50 collage templates, AI tools and HD export — all in your browser.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -31,9 +32,12 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
+export type EditorPhoto = { id: string; name: string; img: HTMLImageElement };
+const MAX_PHOTOS = 4;
+
 function Index() {
-  const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [fileName, setFileName] = useState("photo.jpg");
+  const [photos, setPhotos] = useState<EditorPhoto[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [nav, setNav] = useState<NavKey>("home");
   const [focusTab, setFocusTab] = useState<string | null>(null);
@@ -45,9 +49,18 @@ function Index() {
     document.documentElement.classList.toggle("light", theme === "light");
   }, [theme]);
 
+  const active = useMemo(
+    () => photos.find((p) => p.id === activeId) ?? photos[0] ?? null,
+    [photos, activeId],
+  );
+
   const openPicker = (tab?: string) => {
     if (tab === "AI") {
       setNav("ai");
+      return;
+    }
+    if (photos.length >= MAX_PHOTOS) {
+      toast.info("You can keep up to 4 photos in the timeline");
       return;
     }
     pendingTab.current = tab ?? "Filters";
@@ -57,13 +70,34 @@ function Index() {
   const pick = async (file: File) => {
     try {
       const img = await loadImageFromFile(file);
-      setFileName(file.name);
-      setImage(img);
+      const photo: EditorPhoto = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        name: file.name,
+        img,
+      };
+      setPhotos((p) => [...p, photo].slice(0, MAX_PHOTOS));
+      setActiveId(photo.id);
       setFocusTab(pendingTab.current ?? "Filters");
       setNav(pendingTab.current === "AI" ? "ai" : "edit");
     } catch {
       toast.error("That file couldn't be opened as a photo");
     }
+  };
+
+  const adoptCanvas = (canvas: HTMLCanvasElement, name: string) => {
+    const img = new Image();
+    img.onload = () => {
+      const photo: EditorPhoto = {
+        id: `${Date.now()}-collage`,
+        name,
+        img,
+      };
+      setPhotos((p) => [...p.slice(0, MAX_PHOTOS - 1), photo]);
+      setActiveId(photo.id);
+      setNav("edit");
+      setFocusTab("Filters");
+    };
+    img.src = canvas.toDataURL("image/jpeg", 0.94);
   };
 
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
@@ -73,7 +107,7 @@ function Index() {
       openPicker();
       return;
     }
-    if (key === "edit" && !image) {
+    if (key === "edit" && !active) {
       toast.info("Choose a photo first");
       openPicker("Filters");
       return;
@@ -89,7 +123,13 @@ function Index() {
         <AiStudio />
       </div>
     );
-  } else if (nav === "home" || !image) {
+  } else if (nav === "collage") {
+    screen = (
+      <div className="no-scrollbar h-full overflow-y-auto pb-28">
+        <CollagePage photos={photos} onApply={adoptCanvas} />
+      </div>
+    );
+  } else if (nav === "home" || !active) {
     screen = (
       <div className="no-scrollbar h-full overflow-y-auto pb-28">
         <HomeScreen onOpenPicker={openPicker} theme={theme} onToggleTheme={toggleTheme} />
@@ -98,16 +138,33 @@ function Index() {
   } else {
     screen = (
       <Editor
-        image={image}
-        fileName={fileName}
-        onBack={() => {
-          setImage(null);
-          setNav("home");
-        }}
+        image={active.img}
+        fileName={active.name}
+        onBack={() => setNav("home")}
         theme={theme}
         onToggleTheme={toggleTheme}
         focusTab={focusTab}
         bottomInset
+        photos={photos}
+        activeId={active.id}
+        maxPhotos={MAX_PHOTOS}
+        onSelectPhoto={setActiveId}
+        onAddPhoto={() => openPicker("Filters")}
+        onRemovePhoto={(id) =>
+          setPhotos((p) => {
+            const next = p.filter((x) => x.id !== id);
+            if (id === activeId) setActiveId(next[0]?.id ?? null);
+            return next;
+          })
+        }
+        onReorderPhotos={(from, to) =>
+          setPhotos((p) => {
+            const next = [...p];
+            const [moved] = next.splice(from, 1);
+            if (moved) next.splice(to, 0, moved);
+            return next;
+          })
+        }
       />
     );
   }
