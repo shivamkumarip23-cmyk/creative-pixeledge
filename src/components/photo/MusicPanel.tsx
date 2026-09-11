@@ -216,7 +216,7 @@ export function MusicPanel({
             >
               <button
                 type="button"
-                onClick={() => toggle(t.id, t.preview)}
+                onClick={() => toggle(t.id, t.preview, `${t.title} · ${t.artist}`)}
                 className="relative size-12 shrink-0 overflow-hidden rounded-xl bg-muted"
                 aria-label={`Play ${t.title}`}
               >
