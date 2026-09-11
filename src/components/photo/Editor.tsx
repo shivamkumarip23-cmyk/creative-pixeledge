@@ -424,8 +424,20 @@ export function Editor({
   const renderFull = (maxDimension: number | null) => {
     const canvas = document.createElement("canvas");
     renderToCanvas(canvas, base, state, maxDimension ?? undefined);
+    // With several photos on the timeline, export a composite of all of them
+    // (the active one keeps its edits, the rest are added in timeline order).
+    if (photos.length > 1) {
+      const sources: CanvasImageSource[] = photos.map((p) =>
+        p.id === activeId ? canvas : p.img,
+      );
+      const out = document.createElement("canvas");
+      renderCollage(out, autoTemplate(sources.length), sources, maxDimension ?? 1440, {
+        gap: 0,
+        background: "#000000",
+      });
+      return out;
+    }
     return canvas;
-
   };
 
   const toBlob = (opts: ExportOptions) =>
