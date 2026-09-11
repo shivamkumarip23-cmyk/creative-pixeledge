@@ -63,6 +63,8 @@ import { StickerPanel } from "./StickerPanel";
 import { DrawPanel } from "./DrawPanel";
 import { MusicPanel } from "./MusicPanel";
 import { recordPhotoVideo } from "@/lib/photo/music/video";
+import { autoTemplate, renderCollage } from "@/lib/photo/collage";
+import { Timeline } from "./Timeline";
 import { AiPanel, type AiTool } from "./AiPanel";
 import { MaskLayer, buildMaskCanvas, type MaskStroke } from "./MaskLayer";
 
