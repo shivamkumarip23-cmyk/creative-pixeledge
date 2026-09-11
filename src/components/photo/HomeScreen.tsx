@@ -21,7 +21,7 @@ import {
 import { Doodle, HandText } from "@/components/shell/Doodles";
 import { cn } from "@/lib/utils";
 
-type Tab = "Filters" | "AI" | "Crop" | "Text" | "Stickers" | "Draw" | "Light";
+type Tab = "Filters" | "AI" | "Crop" | "Text" | "Stickers" | "Draw" | "Light" | "Collage";
 
 const QUICK: { label: string; icon: typeof Crop; tab: Tab; tint: string }[] = [
   { label: "Edit", icon: Crop, tab: "Crop", tint: "bg-pastel-peach" },
