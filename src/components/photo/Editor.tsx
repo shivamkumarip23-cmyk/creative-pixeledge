@@ -118,6 +118,13 @@ export function Editor({
   focusTab,
   exportSignal = 0,
   bottomInset = false,
+  photos = [],
+  activeId = null,
+  maxPhotos = 4,
+  onSelectPhoto,
+  onAddPhoto,
+  onRemovePhoto,
+  onReorderPhotos,
 }: {
   image: HTMLImageElement;
   fileName: string;
@@ -127,9 +134,20 @@ export function Editor({
   focusTab?: string | null;
   exportSignal?: number;
   bottomInset?: boolean;
+  photos?: { id: string; name: string; img: HTMLImageElement }[];
+  activeId?: string | null;
+  maxPhotos?: number;
+  onSelectPhoto?: (id: string) => void;
+  onAddPhoto?: () => void;
+  onRemovePhoto?: (id: string) => void;
+  onReorderPhotos?: (from: number, to: number) => void;
 }) {
   const [state, setState] = useState<EditState>(defaultEditState);
   const [base, setBase] = useState<HTMLImageElement>(image);
+  const [selectedMusic, setSelectedMusic] = useState<{ name: string; src: string } | null>(null);
+  useEffect(() => {
+    setBase(image);
+  }, [image]);
   const [past, setPast] = useState<Snapshot[]>([]);
   const [future, setFuture] = useState<Snapshot[]>([]);
   const [tab, setTab] = useState<Tab>("Filters");
