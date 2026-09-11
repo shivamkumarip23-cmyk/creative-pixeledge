@@ -997,6 +997,7 @@ export function Editor({
               onAdd={addMusic}
               onCreateVideo={createMusicVideo}
               videoProgress={videoProgress}
+              onSelectMusic={setSelectedMusic}
             />
           )}
 
