@@ -19,10 +19,12 @@ export function MusicPanel({
   onAdd,
   onCreateVideo,
   videoProgress,
+  onSelectMusic,
 }: {
   onAdd: (label: string) => void;
   onCreateVideo: (audioUrl: string, label: string) => void;
   videoProgress: number | null;
+  onSelectMusic?: (music: { name: string; src: string }) => void;
 }) {
   const search = useServerFn(searchMusic);
   const [tab, setTab] = useState("All");
