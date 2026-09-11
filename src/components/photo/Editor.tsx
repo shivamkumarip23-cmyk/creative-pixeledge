@@ -63,6 +63,8 @@ import { StickerPanel } from "./StickerPanel";
 import { DrawPanel } from "./DrawPanel";
 import { MusicPanel } from "./MusicPanel";
 import { recordPhotoVideo } from "@/lib/photo/music/video";
+import { autoTemplate, renderCollage } from "@/lib/photo/collage";
+import { Timeline } from "./Timeline";
 import { AiPanel, type AiTool } from "./AiPanel";
 import { MaskLayer, buildMaskCanvas, type MaskStroke } from "./MaskLayer";
 
@@ -118,6 +120,13 @@ export function Editor({
   focusTab,
   exportSignal = 0,
   bottomInset = false,
+  photos = [],
+  activeId = null,
+  maxPhotos = 4,
+  onSelectPhoto,
+  onAddPhoto,
+  onRemovePhoto,
+  onReorderPhotos,
 }: {
   image: HTMLImageElement;
   fileName: string;
@@ -127,9 +136,20 @@ export function Editor({
   focusTab?: string | null;
   exportSignal?: number;
   bottomInset?: boolean;
+  photos?: { id: string; name: string; img: HTMLImageElement }[];
+  activeId?: string | null;
+  maxPhotos?: number;
+  onSelectPhoto?: (id: string) => void;
+  onAddPhoto?: () => void;
+  onRemovePhoto?: (id: string) => void;
+  onReorderPhotos?: (from: number, to: number) => void;
 }) {
   const [state, setState] = useState<EditState>(defaultEditState);
   const [base, setBase] = useState<HTMLImageElement>(image);
+  const [selectedMusic, setSelectedMusic] = useState<{ name: string; src: string } | null>(null);
+  useEffect(() => {
+    setBase(image);
+  }, [image]);
   const [past, setPast] = useState<Snapshot[]>([]);
   const [future, setFuture] = useState<Snapshot[]>([]);
   const [tab, setTab] = useState<Tab>("Filters");
@@ -406,8 +426,20 @@ export function Editor({
   const renderFull = (maxDimension: number | null) => {
     const canvas = document.createElement("canvas");
     renderToCanvas(canvas, base, state, maxDimension ?? undefined);
+    // With several photos on the timeline, export a composite of all of them
+    // (the active one keeps its edits, the rest are added in timeline order).
+    if (photos.length > 1) {
+      const sources: CanvasImageSource[] = photos.map((p) =>
+        p.id === activeId ? canvas : p.img,
+      );
+      const out = document.createElement("canvas");
+      renderCollage(out, autoTemplate(sources.length), sources, maxDimension ?? 1440, {
+        gap: 0,
+        background: "#000000",
+      });
+      return out;
+    }
     return canvas;
-
   };
 
   const toBlob = (opts: ExportOptions) =>
@@ -765,7 +797,7 @@ export function Editor({
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="flex max-h-[60dvh] min-h-0 flex-1">
         {/* Canvas viewport */}
         <div
           ref={viewportRef}
@@ -865,8 +897,22 @@ export function Editor({
         {mounted && createPortal(editStackSidebar, document.getElementById("desktop-sidebar-root")!)}
       </div>
 
+      {/* Timeline — photos track + music track */}
+      <Timeline
+        photos={photos.map((p) => ({ id: p.id, name: p.name, src: p.img.src }))}
+        activeId={activeId}
+        onSelect={(id) => onSelectPhoto?.(id)}
+        onAdd={() => onAddPhoto?.()}
+        onRemove={(id) => onRemovePhoto?.(id)}
+        onReorder={(from, to) => onReorderPhotos?.(from, to)}
+        music={selectedMusic}
+        onRemoveMusic={() => setSelectedMusic(null)}
+        onPickMusic={() => setTab("Music")}
+        max={maxPhotos}
+      />
+
       {/* Bottom toolbar */}
-      <section className="border-t border-border bg-surface-2">
+      <section className="min-h-0 border-t border-border bg-surface-2">
         <div className="max-h-64 overflow-y-auto px-3 py-3 sm:px-4">
           {tab === "Filters" && (
             <div className="space-y-3">
@@ -951,6 +997,7 @@ export function Editor({
               onAdd={addMusic}
               onCreateVideo={createMusicVideo}
               videoProgress={videoProgress}
+              onSelectMusic={setSelectedMusic}
             />
           )}
 

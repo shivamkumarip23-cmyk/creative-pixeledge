@@ -21,13 +21,13 @@ import {
 import { Doodle, HandText } from "@/components/shell/Doodles";
 import { cn } from "@/lib/utils";
 
-type Tab = "Filters" | "AI" | "Crop" | "Text" | "Stickers" | "Draw" | "Light";
+type Tab = "Filters" | "AI" | "Crop" | "Text" | "Stickers" | "Draw" | "Light" | "Collage";
 
 const QUICK: { label: string; icon: typeof Crop; tab: Tab; tint: string }[] = [
   { label: "Edit", icon: Crop, tab: "Crop", tint: "bg-pastel-peach" },
   { label: "AI Tools", icon: Sparkles, tab: "AI", tint: "bg-pastel-lavender" },
   { label: "Filters", icon: WandSparkles, tab: "Filters", tint: "bg-pastel-sky" },
-  { label: "Collage", icon: LayoutGrid, tab: "Stickers", tint: "bg-pastel-mint" },
+  { label: "Collage", icon: LayoutGrid, tab: "Collage", tint: "bg-pastel-mint" },
 ];
 
 const POPULAR: { label: string; icon: typeof Crop; tab: Tab; tint: string }[] = [

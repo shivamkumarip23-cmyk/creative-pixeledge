@@ -2,11 +2,11 @@ import { motion } from "framer-motion";
 import { Home, Images, Plus, LayoutGrid, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type NavKey = "home" | "library" | "edit" | "ai";
+export type NavKey = "home" | "library" | "edit" | "ai" | "collage";
 
 const LEFT: { key: NavKey; label: string; icon: typeof Home }[] = [
   { key: "home", label: "Home", icon: Home },
-  { key: "library", label: "Library", icon: Images },
+  { key: "collage", label: "Collage", icon: Images },
 ];
 
 const RIGHT: { key: NavKey; label: string; icon: typeof Home }[] = [
