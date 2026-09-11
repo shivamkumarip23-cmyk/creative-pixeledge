@@ -797,7 +797,7 @@ export function Editor({
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="flex max-h-[60dvh] min-h-0 flex-1">
         {/* Canvas viewport */}
         <div
           ref={viewportRef}
