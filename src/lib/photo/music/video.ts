@@ -1,6 +1,7 @@
 /** Records a still photo + a music track into a real video file (canvas + audio). */
 
 export const FALLBACK_MUSIC = "/music/background.mp3";
+export const CDN_MUSIC = "https://cdn.pixabay.com/audio/2022/06/07/audio_b9bd4170e8.mp3";
 
 export function proxiedAudioUrl(url: string) {
   if (url.startsWith("blob:") || url.startsWith("data:")) return url;
