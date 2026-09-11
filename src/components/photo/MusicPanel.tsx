@@ -120,6 +120,7 @@ export function MusicPanel({
     setPlaying("upload");
     const label = file.name.replace(/\.[^.]+$/, "");
     setUploaded({ url, label });
+    onSelectMusic?.({ name: label, src: url });
     onAdd(label);
     toast.success("Song from your phone added — tap Make video to export it");
   };
