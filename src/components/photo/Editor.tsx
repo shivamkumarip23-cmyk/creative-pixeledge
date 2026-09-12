@@ -65,6 +65,7 @@ import { OverlayLayer, type BrushSettings } from "./OverlayLayer";
 import { TextPanel } from "./TextPanel";
 import { StickerPanel } from "./StickerPanel";
 import { DrawPanel } from "./DrawPanel";
+import { FramePanel } from "./FramePanel";
 import { MusicPanel } from "./MusicPanel";
 import { recordPhotoVideo } from "@/lib/photo/music/video";
 import { autoTemplate, renderCollage } from "@/lib/photo/collage";
