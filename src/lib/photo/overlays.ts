@@ -12,12 +12,18 @@ export type TextItem = {
   rotation: number; // degrees
   font: string;
   color: string;
+  /** Optional second colour — when set the text is filled with a gradient. */
+  gradient?: string | null;
   strokeColor: string;
   strokeWidth: number; // 0..1 relative to font size
   shadow: number; // 0..1
   opacity: number; // 0..1
   bold: boolean;
   italic: boolean;
+  /** Arc bend in degrees, -180..180. 0 = straight. */
+  curve?: number;
+  /** 3D extrusion depth, 0..1 relative to font size. */
+  depth?: number;
 };
 
 export type StickerItem = {
@@ -31,7 +37,21 @@ export type StickerItem = {
   opacity: number;
 };
 
-export type OverlayItem = TextItem | StickerItem;
+/** Sticker loaded from a URL (custom sticker / shape pack). */
+export type ImageItem = {
+  id: string;
+  kind: "image";
+  src: string;
+  x: number;
+  y: number;
+  size: number; // fraction of canvas height
+  rotation: number;
+  opacity: number;
+};
+
+export type OverlayItem = TextItem | StickerItem | ImageItem;
+
+export type BrushStyle = "brush" | "marker" | "neon" | "calligraphy";
 
 export type Stroke = {
   id: string;
@@ -39,6 +59,7 @@ export type Stroke = {
   width: number; // fraction of the canvas smaller side
   erase: boolean;
   opacity: number;
+  style?: BrushStyle;
   points: { x: number; y: number }[];
 };
 
