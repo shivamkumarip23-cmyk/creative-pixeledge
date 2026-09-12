@@ -160,6 +160,32 @@ export function OverlayLayer({
       {overlays.items.map((item) => {
         const selected = item.id === selectedId;
         const px = item.size * height;
+        const depth = item.kind === "text" ? (item.depth ?? 0) : 0;
+        const curve = item.kind === "text" ? (item.curve ?? 0) : 0;
+        const shadowLayers: string[] = [];
+        if (item.kind === "text") {
+          if (depth > 0) {
+            const steps = Math.max(2, Math.round(depth * 18));
+            for (let d = 1; d <= steps; d++) {
+              const o = (d / steps) * depth * px * 0.35;
+              shadowLayers.push(`${o.toFixed(2)}px ${o.toFixed(2)}px 0 ${item.strokeColor}`);
+            }
+          }
+          if (item.shadow > 0) {
+            shadowLayers.push(
+              `0 ${px * 0.06}px ${px * 0.28 * item.shadow}px rgba(0,0,0,${0.75 * item.shadow})`,
+            );
+          }
+        }
+        const gradientStyle =
+          item.kind === "text" && item.gradient
+            ? {
+                backgroundImage: `linear-gradient(90deg, ${item.color}, ${item.gradient})`,
+                WebkitBackgroundClip: "text" as const,
+                backgroundClip: "text" as const,
+                color: "transparent",
+              }
+            : null;
         return (
           <div
             key={item.id}
@@ -190,20 +216,50 @@ export function OverlayLayer({
                       color: item.color,
                       WebkitTextStrokeWidth: `${px * item.strokeWidth}px`,
                       WebkitTextStrokeColor: item.strokeColor,
-                      textShadow:
-                        item.shadow > 0
-                          ? `0 ${px * 0.06}px ${px * 0.28 * item.shadow}px rgba(0,0,0,${0.75 * item.shadow})`
-                          : "none",
+                      textShadow: shadowLayers.length ? shadowLayers.join(", ") : "none",
+                      ...(gradientStyle ?? {}),
                     }
-                  : {
-                      fontSize: `${px}px`,
-                      lineHeight: 1,
-                      fontFamily:
-                        '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
-                    }
+                  : item.kind === "sticker"
+                    ? {
+                        fontSize: `${px}px`,
+                        lineHeight: 1,
+                        fontFamily:
+                          '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
+                      }
+                    : { lineHeight: 0 }
               }
             >
-              {item.kind === "text" ? item.text : item.char}
+              {item.kind === "text" ? (
+                curve ? (
+                  <span className="inline-flex items-end">
+                    {[...item.text].map((ch, i, arr) => (
+                      <span
+                        key={`${item.id}-${i}`}
+                        style={{
+                          display: "inline-block",
+                          transform: `rotate(${(i - (arr.length - 1) / 2) * (curve / Math.max(1, arr.length))}deg)`,
+                          transformOrigin: curve > 0 ? "50% 200%" : "50% -100%",
+                        }}
+                      >
+                        {ch === " " ? "\u00a0" : ch}
+                      </span>
+                    ))}
+                  </span>
+                ) : (
+                  item.text
+                )
+              ) : item.kind === "sticker" ? (
+                item.char
+              ) : (
+                <img
+                  src={item.src}
+                  alt=""
+                  draggable={false}
+                  crossOrigin="anonymous"
+                  style={{ height: `${px}px`, width: "auto", display: "block" }}
+                />
+              )}
+
 
               {selected && !drawMode && (
                 <>
