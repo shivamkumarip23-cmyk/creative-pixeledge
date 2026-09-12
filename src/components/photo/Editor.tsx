@@ -113,9 +113,16 @@ const ASPECTS: { label: string; value: number | null }[] = [
   { label: "21:9", value: 21 / 9 },
   { label: "2:1", value: 2 },
   { label: "1:2", value: 0.5 },
-  { label: "Story 9:16", value: 9 / 16 },
-  { label: "Post 1:1", value: 1 },
-  { label: "Thumb 16:9", value: 16 / 9 },
+];
+
+/** Ready-made social sizes. */
+const TEMPLATES: { label: string; value: number }[] = [
+  { label: "IG Post", value: 1 },
+  { label: "IG Portrait", value: 4 / 5 },
+  { label: "IG Story", value: 9 / 16 },
+  { label: "YouTube Thumbnail", value: 16 / 9 },
+  { label: "Facebook Cover", value: 851 / 315 },
+  { label: "Pinterest Pin", value: 2 / 3 },
 ];
 
 const MIN_ZOOM = 0.2;
