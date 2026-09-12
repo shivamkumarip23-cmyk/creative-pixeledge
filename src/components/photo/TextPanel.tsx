@@ -107,11 +107,49 @@ export function TextPanel({
         onBegin={onBegin}
       />
       <ColorRow
-        label="STROKE COLOR"
+        label="STROKE / 3D COLOR"
         value={item.strokeColor}
         onChange={(strokeColor) => onPatch({ strokeColor })}
         onBegin={onBegin}
       />
+
+      <div>
+        <p className="mb-1.5 text-[10px] font-semibold tracking-widest text-muted-foreground">
+          GRADIENT FILL
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onPatch({ gradient: item.gradient ? null : "#8b5cf6" })}
+            className={cn(
+              "rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors",
+              item.gradient
+                ? "border-primary bg-primary/15 text-primary"
+                : "border-border bg-secondary hover:bg-muted",
+            )}
+          >
+            {item.gradient ? "Gradient on" : "Gradient off"}
+          </button>
+          {item.gradient && (
+            <>
+              {["#8b5cf6", "#ff6ec7", "#3b82f6", "#34c759", "#ffcc00", "#ff3b30"].map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => onPatch({ gradient: c })}
+                  style={{ background: c }}
+                  className={cn(
+                    "size-7 shrink-0 rounded-full border-2",
+                    item.gradient === c ? "scale-110 border-primary" : "border-border",
+                  )}
+                  aria-label={`Gradient end ${c}`}
+                />
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+
 
       <div className="grid gap-x-8 sm:grid-cols-2">
         <AdjustSlider
