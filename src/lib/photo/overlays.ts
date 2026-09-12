@@ -309,34 +309,6 @@ export function drawStrokes(
   }
 }
 
-/** Draws one line of text along an arc. `curve` is the total bend in degrees. */
-function drawCurvedLine(
-  ctx: CanvasRenderingContext2D,
-  line: string,
-  px: number,
-  curve: number,
-  paint: (ch: string, x: number, y: number) => void,
-) {
-  const chars = [...line];
-  const widths = chars.map((c) => ctx.measureText(c).width);
-  const total = widths.reduce((a, b) => a + b, 0) || 1;
-  const angle = (curve * Math.PI) / 180;
-  const radius = total / Math.abs(angle);
-  const dir = curve > 0 ? 1 : -1;
-  let acc = -total / 2;
-  for (let i = 0; i < chars.length; i++) {
-    const wch = widths[i]!;
-    const theta = ((acc + wch / 2) / radius) * dir;
-    ctx.save();
-    ctx.rotate(theta);
-    paint(chars[i]!, 0, -dir * radius + dir * radius * 0 - dir * 0 + (dir > 0 ? -radius + radius : 0));
-    ctx.translate(0, 0);
-    ctx.restore();
-    // position along the arc: translate out to the radius then rotate
-    acc += wch;
-  }
-  void px;
-}
 
 /** Composites text, stickers and brush strokes on top of an edited photo. */
 export function drawOverlays(
