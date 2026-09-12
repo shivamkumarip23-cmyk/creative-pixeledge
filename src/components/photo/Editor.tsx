@@ -1101,6 +1101,25 @@ export function Editor({
               </div>
               <div>
                 <p className="mb-2 text-[10px] font-semibold tracking-widest text-muted-foreground">
+                  SOCIAL TEMPLATES
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {TEMPLATES.map((t) => (
+                    <button
+                      key={t.label}
+                      type="button"
+                      onClick={() =>
+                        commit({ ...state, geometry: { ...state.geometry, cropAspect: t.value } })
+                      }
+                      className="rounded-xl border border-border bg-secondary px-3 py-1.5 text-xs font-medium hover:bg-muted"
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="mb-2 text-[10px] font-semibold tracking-widest text-muted-foreground">
                   TRANSFORM
                 </p>
                 <div className="flex flex-wrap gap-2">
