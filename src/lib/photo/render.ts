@@ -1,5 +1,6 @@
 import type { Adjustments, EditState } from "./types";
 import { applyFilterToAdjustments, filterPresets } from "./filters";
+import { drawFrame } from "./frames";
 import { drawOverlays } from "./overlays";
 
 export function cssFilterString(a: Adjustments): string {
