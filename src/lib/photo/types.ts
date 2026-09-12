@@ -1,4 +1,5 @@
 import type { Overlays } from "./overlays";
+import { defaultFrame, type FrameSettings } from "./frames";
 
 export type Adjustments = {
   brightness: number;
