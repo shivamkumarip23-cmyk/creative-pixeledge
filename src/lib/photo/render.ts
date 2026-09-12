@@ -1,5 +1,6 @@
 import type { Adjustments, EditState } from "./types";
 import { applyFilterToAdjustments, filterPresets } from "./filters";
+import { drawFrame } from "./frames";
 import { drawOverlays } from "./overlays";
 
 export function cssFilterString(a: Adjustments): string {
@@ -148,9 +149,114 @@ export function renderToCanvas(
     ctx.restore();
   }
 
+  // Creative effects
+  const fx = state.effects;
+  if (fx?.bgBlur) backgroundBlur(ctx, canvas, w, h, fx.bgBlur / 100);
+  if (fx?.bokeh) bokeh(ctx, w, h, fx.bokeh / 100);
+  if (fx?.glitch) glitch(ctx, canvas, w, h, fx.glitch / 100);
+
   // Text, stickers and brush strokes
   if (state.overlays && (state.overlays.items.length || state.overlays.strokes.length)) {
     drawOverlays(ctx, w, h, state.overlays);
+  }
+
+  // Border / frame on top of everything
+  if (state.frame && state.frame.id !== "none") drawFrame(ctx, w, h, state.frame);
+}
+
+/** Keeps the centre sharp and blurs outwards — a quick portrait look. */
+function backgroundBlur(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  w: number,
+  h: number,
+  amount: number,
+) {
+  const snap = document.createElement("canvas");
+  snap.width = w;
+  snap.height = h;
+  const sc = snap.getContext("2d");
+  if (!sc) return;
+  sc.drawImage(canvas, 0, 0);
+
+  const blurred = document.createElement("canvas");
+  blurred.width = w;
+  blurred.height = h;
+  const bc = blurred.getContext("2d");
+  if (!bc) return;
+  bc.filter = `blur(${Math.max(1, amount * Math.min(w, h) * 0.03)}px)`;
+  bc.drawImage(snap, 0, 0);
+
+  // Mask the blurred copy so the centre stays untouched.
+  const mask = ctx.createRadialGradient(
+    w / 2,
+    h / 2,
+    Math.min(w, h) * 0.18,
+    w / 2,
+    h / 2,
+    Math.max(w, h) * 0.62,
+  );
+  mask.addColorStop(0, "rgba(0,0,0,0)");
+  mask.addColorStop(1, "rgba(0,0,0,1)");
+  bc.globalCompositeOperation = "destination-in";
+  bc.fillStyle = mask;
+  bc.fillRect(0, 0, w, h);
+
+  ctx.drawImage(blurred, 0, 0);
+}
+
+function bokeh(ctx: CanvasRenderingContext2D, w: number, h: number, amount: number) {
+  const count = Math.round(18 + amount * 40);
+  const min = Math.min(w, h);
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  for (let i = 0; i < count; i++) {
+    const r = min * (0.01 + Math.random() * 0.06) * (0.5 + amount);
+    const x = Math.random() * w;
+    const y = Math.random() * h;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    const alpha = (0.08 + Math.random() * 0.22) * amount;
+    g.addColorStop(0, `rgba(255,255,255,${alpha})`);
+    g.addColorStop(0.7, `rgba(255,240,210,${alpha * 0.5})`);
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function glitch(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  w: number,
+  h: number,
+  amount: number,
+) {
+  const snap = document.createElement("canvas");
+  snap.width = w;
+  snap.height = h;
+  const sc = snap.getContext("2d");
+  if (!sc) return;
+  sc.drawImage(canvas, 0, 0);
+
+  // RGB channel split
+  const shift = Math.max(1, amount * w * 0.012);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = 0.45;
+  ctx.drawImage(snap, -shift, 0);
+  ctx.drawImage(snap, shift, 0);
+  ctx.restore();
+
+  // Horizontal slice displacement
+  const slices = Math.round(4 + amount * 16);
+  for (let i = 0; i < slices; i++) {
+    const sh = Math.max(2, Math.round((Math.random() * h) / 40));
+    const sy = Math.floor(Math.random() * (h - sh));
+    const dx = (Math.random() - 0.5) * amount * w * 0.08;
+    ctx.drawImage(snap, 0, sy, w, sh, dx, sy, w, sh);
   }
 }
 

@@ -23,21 +23,25 @@ import {
   RefreshCw,
   Wand2,
   Music4,
-
+  Frame,
 } from "lucide-react";
 import { toast } from "sonner";
 import { adjustmentMeta } from "@/lib/photo/adjustments";
 import { filterGroups, filterPresets } from "@/lib/photo/filters";
 import { outputSize, renderToCanvas } from "@/lib/photo/render";
 import {
+  preloadOverlayImages,
   uid,
+  type ImageItem,
   type Overlays,
   type StickerItem,
   type TextItem,
 } from "@/lib/photo/overlays";
+import type { FrameSettings } from "@/lib/photo/frames";
 import {
   defaultAdjustments,
   defaultEditState,
+  defaultEffects,
   type Adjustments,
   type EditState,
 } from "@/lib/photo/types";
@@ -61,6 +65,7 @@ import { OverlayLayer, type BrushSettings } from "./OverlayLayer";
 import { TextPanel } from "./TextPanel";
 import { StickerPanel } from "./StickerPanel";
 import { DrawPanel } from "./DrawPanel";
+import { FramePanel } from "./FramePanel";
 import { MusicPanel } from "./MusicPanel";
 import { recordPhotoVideo } from "@/lib/photo/music/video";
 import { autoTemplate, renderCollage } from "@/lib/photo/collage";
@@ -80,6 +85,7 @@ type Tab =
   | "Text"
   | "Stickers"
   | "Draw"
+  | "Frames"
   | "Music"
   | "AI";
 const TABS: { id: Tab; icon: typeof Crop }[] = [
@@ -90,6 +96,7 @@ const TABS: { id: Tab; icon: typeof Crop }[] = [
   { id: "Stickers", icon: Smile },
   { id: "Music", icon: Music4 },
   { id: "Draw", icon: Brush },
+  { id: "Frames", icon: Frame },
   { id: "Light", icon: Sun },
   { id: "Color", icon: SlidersHorizontal },
   { id: "Detail", icon: Eye },
@@ -101,11 +108,26 @@ const ASPECTS: { label: string; value: number | null }[] = [
   { label: "Original", value: null },
   { label: "1:1", value: 1 },
   { label: "4:5", value: 4 / 5 },
+  { label: "5:4", value: 5 / 4 },
   { label: "3:4", value: 3 / 4 },
+  { label: "4:3", value: 4 / 3 },
   { label: "2:3", value: 2 / 3 },
+  { label: "3:2", value: 3 / 2 },
   { label: "16:9", value: 16 / 9 },
   { label: "9:16", value: 9 / 16 },
-  { label: "3:2", value: 3 / 2 },
+  { label: "21:9", value: 21 / 9 },
+  { label: "2:1", value: 2 },
+  { label: "1:2", value: 0.5 },
+];
+
+/** Ready-made social sizes. */
+const TEMPLATES: { label: string; value: number }[] = [
+  { label: "IG Post", value: 1 },
+  { label: "IG Portrait", value: 4 / 5 },
+  { label: "IG Story", value: 9 / 16 },
+  { label: "YouTube Thumbnail", value: 16 / 9 },
+  { label: "Facebook Cover", value: 851 / 315 },
+  { label: "Pinterest Pin", value: 2 / 3 },
 ];
 
 const MIN_ZOOM = 0.2;
@@ -459,6 +481,7 @@ export function Editor({
   const handleExport = async (opts: ExportOptions) => {
     setBusy(true);
     try {
+      await preloadOverlayImages(state.overlays);
       const blob = await toBlob(opts);
       if (!blob) throw new Error("export failed");
       saveBlob(blob, opts.format.split("/")[1]!.replace("jpeg", "jpg"));
@@ -607,6 +630,21 @@ export function Editor({
     setSelectedId(item.id);
   };
 
+  const addImageSticker = (src: string) => {
+    const item: ImageItem = {
+      id: uid(),
+      kind: "image",
+      src,
+      x: 0.5,
+      y: 0.5,
+      size: 0.3,
+      rotation: 0,
+      opacity: 1,
+    };
+    commit({ ...state, overlays: { ...state.overlays, items: [...state.overlays.items, item] } });
+    setSelectedId(item.id);
+  };
+
   const patchSelected = (patch: Partial<TextItem>) => {
     if (!selectedId) return;
     setState((s) => ({
@@ -690,7 +728,13 @@ export function Editor({
                       : "border-border bg-secondary hover:bg-muted",
                   )}
                 >
-                  <span className="truncate">{item.kind === "text" ? item.text || "Text" : item.char}</span>
+                  <span className="truncate">
+                    {item.kind === "text"
+                      ? item.text || "Text"
+                      : item.kind === "sticker"
+                        ? item.char
+                        : "Image"}
+                  </span>
                   <span className="text-muted-foreground">{item.kind}</span>
                 </button>
               ))}
@@ -990,7 +1034,19 @@ export function Editor({
             />
           )}
 
-          {tab === "Stickers" && <StickerPanel onAdd={addSticker} />}
+          {tab === "Stickers" && (
+            <StickerPanel onAdd={addSticker} onAddImage={addImageSticker} />
+          )}
+
+          {tab === "Frames" && (
+            <FramePanel
+              frame={state.frame}
+              onChange={(patch: Partial<FrameSettings>) =>
+                setState((s) => ({ ...s, frame: { ...s.frame, ...patch } }))
+              }
+              onBegin={beginAdjustment}
+            />
+          )}
 
           {tab === "Music" && (
             <MusicPanel
@@ -1040,6 +1096,25 @@ export function Editor({
                       )}
                     >
                       {a.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="mb-2 text-[10px] font-semibold tracking-widest text-muted-foreground">
+                  SOCIAL TEMPLATES
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {TEMPLATES.map((t) => (
+                    <button
+                      key={t.label}
+                      type="button"
+                      onClick={() =>
+                        commit({ ...state, geometry: { ...state.geometry, cropAspect: t.value } })
+                      }
+                      className="rounded-xl border border-border bg-secondary px-3 py-1.5 text-xs font-medium hover:bg-muted"
+                    >
+                      {t.label}
                     </button>
                   ))}
                 </div>
@@ -1110,6 +1185,31 @@ export function Editor({
                   onReset={() => patchAdjustment(meta.key, defaultAdjustments[meta.key])}
                 />
               ))}
+              {tab === "Effects" &&
+                (
+                  [
+                    ["glitch", "Glitch", 100],
+                    ["bokeh", "Bokeh", 100],
+                    ["bgBlur", "Blur background", 100],
+                  ] as const
+                ).map(([key, label, max]) => (
+                  <AdjustSlider
+                    key={key}
+                    label={label}
+                    value={state.effects[key]}
+                    min={0}
+                    max={max}
+                    onChange={(v) =>
+                      setState((s) => ({ ...s, effects: { ...s.effects, [key]: v } }))
+                    }
+                    onReset={() =>
+                      setState((s) => ({
+                        ...s,
+                        effects: { ...s.effects, [key]: defaultEffects[key] },
+                      }))
+                    }
+                  />
+                ))}
               <div className="col-span-full pt-1">
                 <button
                   type="button"

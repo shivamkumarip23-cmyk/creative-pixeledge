@@ -1,4 +1,5 @@
 import type { Overlays } from "./overlays";
+import { defaultFrame, type FrameSettings } from "./frames";
 
 export type Adjustments = {
   brightness: number;
@@ -48,12 +49,22 @@ export const defaultGeometry: Geometry = {
   cropAspect: null,
 };
 
+export type Effects = {
+  glitch: number; // 0..100 RGB split / slice offset
+  bokeh: number; // 0..100 dreamy light blobs
+  bgBlur: number; // 0..100 radial background blur
+};
+
+export const defaultEffects: Effects = { glitch: 0, bokeh: 0, bgBlur: 0 };
+
 export type EditState = {
   adjustments: Adjustments;
   overlays: Overlays;
   geometry: Geometry;
   filterId: string;
   filterStrength: number;
+  effects: Effects;
+  frame: FrameSettings;
 };
 
 export const defaultEditState: EditState = {
@@ -62,4 +73,6 @@ export const defaultEditState: EditState = {
   geometry: { ...defaultGeometry },
   filterId: "original",
   filterStrength: 100,
+  effects: { ...defaultEffects },
+  frame: { ...defaultFrame },
 };

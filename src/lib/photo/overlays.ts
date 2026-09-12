@@ -12,12 +12,18 @@ export type TextItem = {
   rotation: number; // degrees
   font: string;
   color: string;
+  /** Optional second colour — when set the text is filled with a gradient. */
+  gradient?: string | null;
   strokeColor: string;
   strokeWidth: number; // 0..1 relative to font size
   shadow: number; // 0..1
   opacity: number; // 0..1
   bold: boolean;
   italic: boolean;
+  /** Arc bend in degrees, -180..180. 0 = straight. */
+  curve?: number;
+  /** 3D extrusion depth, 0..1 relative to font size. */
+  depth?: number;
 };
 
 export type StickerItem = {
@@ -31,7 +37,21 @@ export type StickerItem = {
   opacity: number;
 };
 
-export type OverlayItem = TextItem | StickerItem;
+/** Sticker loaded from a URL (custom sticker / shape pack). */
+export type ImageItem = {
+  id: string;
+  kind: "image";
+  src: string;
+  x: number;
+  y: number;
+  size: number; // fraction of canvas height
+  rotation: number;
+  opacity: number;
+};
+
+export type OverlayItem = TextItem | StickerItem | ImageItem;
+
+export type BrushStyle = "brush" | "marker" | "neon" | "calligraphy";
 
 export type Stroke = {
   id: string;
@@ -39,6 +59,7 @@ export type Stroke = {
   width: number; // fraction of the canvas smaller side
   erase: boolean;
   opacity: number;
+  style?: BrushStyle;
   points: { x: number; y: number }[];
 };
 
@@ -82,13 +103,41 @@ export const fontOptions: FontOption[] = [
   { name: "Satisfy", label: "Satisfy", stack: '"Satisfy", cursive' },
   { name: "Fredoka", label: "Fredoka", stack: '"Fredoka", sans-serif' },
   { name: "Titan One", label: "Titan", stack: '"Titan One", cursive' },
+  { name: "Alfa Slab One", label: "Alfa Slab", stack: '"Alfa Slab One", serif' },
+  { name: "Amatic SC", label: "Amatic", stack: '"Amatic SC", cursive' },
+  { name: "Baloo 2", label: "Baloo", stack: '"Baloo 2", cursive' },
+  { name: "Bungee", label: "Bungee", stack: '"Bungee", cursive' },
+  { name: "Cinzel", label: "Cinzel", stack: '"Cinzel", serif' },
+  { name: "Comfortaa", label: "Comfortaa", stack: '"Comfortaa", cursive' },
+  { name: "Courgette", label: "Courgette", stack: '"Courgette", cursive' },
+  { name: "DM Serif Display", label: "DM Serif", stack: '"DM Serif Display", serif' },
+  { name: "Exo 2", label: "Exo", stack: '"Exo 2", sans-serif' },
+  { name: "Figtree", label: "Figtree", stack: '"Figtree", sans-serif' },
+  { name: "Fjalla One", label: "Fjalla", stack: '"Fjalla One", sans-serif' },
+  { name: "Gloria Hallelujah", label: "Gloria", stack: '"Gloria Hallelujah", cursive' },
+  { name: "Indie Flower", label: "Indie", stack: '"Indie Flower", cursive' },
+  { name: "Josefin Sans", label: "Josefin", stack: '"Josefin Sans", sans-serif' },
+  { name: "Kaushan Script", label: "Kaushan", stack: '"Kaushan Script", cursive' },
+  { name: "Lexend", label: "Lexend", stack: '"Lexend", sans-serif' },
+  { name: "Luckiest Guy", label: "Luckiest", stack: '"Luckiest Guy", cursive' },
+  { name: "Merriweather", label: "Merriweather", stack: '"Merriweather", serif' },
+  { name: "Nunito", label: "Nunito", stack: '"Nunito", sans-serif' },
+  { name: "Orbitron", label: "Orbitron", stack: '"Orbitron", sans-serif' },
+  { name: "Pathway Gothic One", label: "Pathway", stack: '"Pathway Gothic One", sans-serif' },
+  { name: "Playfair Display SC", label: "Playfair SC", stack: '"Playfair Display SC", serif' },
+  { name: "Quicksand", label: "Quicksand", stack: '"Quicksand", sans-serif' },
+  { name: "Roboto Slab", label: "Slab", stack: '"Roboto Slab", serif' },
+  { name: "Sacramento", label: "Sacramento", stack: '"Sacramento", cursive' },
+  { name: "Special Elite", label: "Typewriter", stack: '"Special Elite", cursive' },
+  { name: "Staatliches", label: "Staatliches", stack: '"Staatliches", sans-serif' },
+  { name: "Ultra", label: "Ultra", stack: '"Ultra", serif' },
+  { name: "Yellowtail", label: "Yellowtail", stack: '"Yellowtail", cursive' },
+  { name: "Zilla Slab", label: "Zilla", stack: '"Zilla Slab", serif' },
 ];
 
 export const googleFontsHref =
   "https://fonts.googleapis.com/css2?" +
-  fontOptions
-    .map((f) => `family=${f.name.replace(/ /g, "+")}:wght@400;700`)
-    .join("&") +
+  fontOptions.map((f) => `family=${f.name.replace(/ /g, "+")}`).join("&") +
   "&display=swap";
 
 export const fontStack = (name: string) =>
@@ -135,11 +184,97 @@ export const stickerCategories: StickerCategory[] = [
     name: "Trendy",
     items: ["💎","👑","🕶️","👟","💄","💅","🎧","🎮","📱","💻","🛹","🏀","⚽","🏆","🥇","💸","📈","🧿","☯️","♾️"],
   },
+  {
+    name: "Gen-Z",
+    items: [
+      "💅","✨","🫶","🥹","😮‍💨","🤌","🫠","🫡","🧸","🪩","🦄","🐻","🍄","🌈","🫧","🪐","👾","🛸","🧋","🍡",
+      "🎀","🪷","🧁","🩷","🩵","🩶","🫥","😶‍🌫️","🥲","🤳","📼","💿","🕹️","🧃","🪞","🪄","🔮","🧊","🛼","🎯",
+    ],
+  },
+  {
+    name: "Animals",
+    items: [
+      "🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🐔","🐧","🐦","🐤","🦆",
+      "🦅","🦉","🦇","🐺","🐗","🐴","🦄","🐝","🐛","🦋","🐌","🐞","🐢","🐍","🦎","🐙","🦑","🦀","🐠","🐬",
+      "🐳","🦈","🐊","🐅","🦓","🦍","🐘","🦒","🐑","🦔",
+    ],
+  },
+  {
+    name: "Weather",
+    items: ["☀️","🌤️","⛅","🌥️","☁️","🌦️","🌧️","⛈️","🌩️","🌨️","❄️","☃️","⛄","🌬️","💨","🌪️","🌫️","🌊","💧","💦","☔","🌂","🌡️","🔥","🌞","🌝","🌛","🌜","🌚","🌕","🌖","🌗","🌘","🌑","🌒","🌓","🌔","⭐","🌠","🌌"],
+  },
+  {
+    name: "Sports",
+    items: ["⚽","🏀","🏈","⚾","🥎","🎾","🏐","🏉","🥏","🎱","🏓","🏸","🥅","🏒","🏑","🥍","🏏","⛳","🏹","🎣","🤿","🥊","🥋","🎽","🛹","🛼","🛷","⛸️","🥌","🎿","⛷️","🏂","🏋️","🤸","🤾","🏄","🚴","🚵","🏆","🏅"],
+  },
+  {
+    name: "Objects",
+    items: ["📷","📹","🎥","📺","📻","🎙️","🎚️","🎛️","⏰","⌚","🔔","💡","🔦","🕯️","🧯","🛒","🎒","👜","👛","🧳","☂️","🔑","🗝️","🔒","🔓","📌","📎","✂️","📏","📐","🖊️","🖍️","📚","📖","📝","🗞️","💌","📮","🎁","🛍️"],
+  },
+  {
+    name: "Shapes",
+    items: [
+      "●","○","◍","◉","◎","◐","◑","◒","◓","■","□","▢","▣","▤","▥","▦","▧","▨","▩","▪",
+      "▫","▬","▭","▮","▯","▰","▱","▲","△","▴","▵","▶","▷","▸","▹","►","▻","▼","▽","▾",
+      "◀","◁","◂","◃","◄","◅","◆","◇","◈","◊","○","◌","◘","◙","◚","◛","◜","◝","◞","◟",
+      "◠","◡","◢","◣","◤","◥","◦","◧","◨","◩","◪","◫","◬","◭","◮","◯","⬒","⬓","⬔","⬕",
+      "⬖","⬗","⬘","⬙","⬚","⬛","⬜","⬝","⬞","⬟","⬠","⬡","⬢","⬣","⭓","⭔","⭑","⭒","✦","✧",
+    ],
+  },
+  {
+    name: "Symbols",
+    items: [
+      "★","☆","✩","✪","✫","✬","✭","✮","✯","✰","✱","✲","✳","✴","✵","✶","✷","✸","✹","✺",
+      "❀","❁","❂","❃","❄","❅","❆","❇","❈","❉","❊","❋","♡","♥","♢","♦","♤","♠","♧","♣",
+      "☾","☽","☼","☀","☁","☂","☃","✈","✆","✉","✌","✍","✏","✒","✂","☎","☑","☒","✓","✔",
+      "♩","♪","♫","♬","♭","♮","♯","∞","≈","≠","±","÷","×","§","¶","†","‡","•","‣","※",
+    ],
+  },
+  {
+    name: "Arrows",
+    items: [
+      "←","↑","→","↓","↔","↕","↖","↗","↘","↙","↚","↛","↜","↝","↞","↟","↠","↡","↢","↣",
+      "↦","↩","↪","↫","↬","↭","↮","↯","↰","↱","↲","↳","↴","↵","↶","↷","↺","↻","⇄","⇅",
+      "⇆","⇇","⇈","⇉","⇊","⇋","⇌","⇐","⇑","⇒","⇓","⇔","⇕","⇖","⇗","⇘","⇙","➜","➡","➢",
+    ],
+  },
 ];
 
 export const allStickers = stickerCategories.flatMap((c) =>
   c.items.map((char) => ({ char, category: c.name })),
 );
+
+/* -------------------------------------------------------- image stickers */
+
+const imageCache = new Map<string, HTMLImageElement>();
+
+export function getOverlayImage(src: string): HTMLImageElement {
+  let img = imageCache.get(src);
+  if (!img) {
+    img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = src;
+    imageCache.set(src, img);
+  }
+  return img;
+}
+
+/** Makes sure every image sticker is decoded before an export render. */
+export async function preloadOverlayImages(overlays: Overlays) {
+  await Promise.all(
+    overlays.items
+      .filter((i): i is ImageItem => i.kind === "image")
+      .map(
+        (i) =>
+          new Promise<void>((resolve) => {
+            const img = getOverlayImage(i.src);
+            if (img.complete) return resolve();
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+          }),
+      ),
+  );
+}
 
 /* ---------------------------------------------------------------- drawing */
 
@@ -150,27 +285,58 @@ export function drawStrokes(
   strokes: Stroke[],
 ) {
   const min = Math.min(w, h);
-  ctx.save();
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
   for (const s of strokes) {
     if (s.points.length === 0) continue;
+    const style = s.style ?? "brush";
+    ctx.save();
+    ctx.lineJoin = "round";
+    ctx.lineCap = style === "marker" || style === "calligraphy" ? "square" : "round";
     ctx.globalCompositeOperation = s.erase ? "destination-out" : "source-over";
-    ctx.globalAlpha = s.erase ? 1 : s.opacity;
+    ctx.globalAlpha = s.erase ? 1 : style === "marker" ? s.opacity * 0.55 : s.opacity;
     ctx.strokeStyle = s.color;
-    ctx.lineWidth = Math.max(1, s.width * min);
-    ctx.beginPath();
-    const p0 = s.points[0]!;
-    ctx.moveTo(p0.x * w, p0.y * h);
-    if (s.points.length === 1) ctx.lineTo(p0.x * w + 0.01, p0.y * h);
-    for (let i = 1; i < s.points.length; i++) {
-      const p = s.points[i]!;
-      ctx.lineTo(p.x * w, p.y * h);
+    ctx.lineWidth = Math.max(1, s.width * min * (style === "marker" ? 1.4 : 1));
+
+    const trace = () => {
+      ctx.beginPath();
+      const p0 = s.points[0]!;
+      ctx.moveTo(p0.x * w, p0.y * h);
+      if (s.points.length === 1) ctx.lineTo(p0.x * w + 0.01, p0.y * h);
+      for (let i = 1; i < s.points.length; i++) {
+        const p = s.points[i]!;
+        ctx.lineTo(p.x * w, p.y * h);
+      }
+      ctx.stroke();
+    };
+
+    if (style === "neon" && !s.erase) {
+      ctx.shadowColor = s.color;
+      ctx.shadowBlur = Math.max(4, s.width * min * 1.8);
+      trace();
+      trace();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = "#ffffff";
+      ctx.globalAlpha = s.opacity * 0.9;
+      ctx.lineWidth = Math.max(1, s.width * min * 0.35);
+      trace();
+    } else if (style === "calligraphy" && !s.erase) {
+      for (const [dx, dy, a] of [
+        [-0.35, 0.35, 1],
+        [0, 0, 1],
+        [0.35, -0.35, 0.8],
+      ] as const) {
+        ctx.save();
+        ctx.globalAlpha = s.opacity * a;
+        ctx.translate(dx * s.width * min, dy * s.width * min);
+        trace();
+        ctx.restore();
+      }
+    } else {
+      trace();
     }
-    ctx.stroke();
+    ctx.restore();
   }
-  ctx.restore();
 }
+
 
 /** Composites text, stickers and brush strokes on top of an edited photo. */
 export function drawOverlays(
@@ -201,6 +367,14 @@ export function drawOverlays(
     if (item.kind === "sticker") {
       ctx.font = `${px}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
       ctx.fillText(item.char, 0, 0);
+    } else if (item.kind === "image") {
+      const img = getOverlayImage(item.src);
+      if (img.complete && img.naturalWidth) {
+        const ratio = img.naturalWidth / img.naturalHeight;
+        const ih = px;
+        const iw = px * ratio;
+        ctx.drawImage(img, -iw / 2, -ih / 2, iw, ih);
+      }
     } else {
       const weight = item.bold ? "700" : "400";
       const style = item.italic ? "italic " : "";
@@ -208,21 +382,72 @@ export function drawOverlays(
       const lines = item.text.split("\n");
       const lh = px * 1.15;
       const top = -((lines.length - 1) * lh) / 2;
-      if (item.shadow > 0) {
-        ctx.shadowColor = `rgba(0,0,0,${0.75 * item.shadow})`;
-        ctx.shadowBlur = px * 0.28 * item.shadow;
-        ctx.shadowOffsetY = px * 0.06 * item.shadow;
-      }
-      lines.forEach((line, i) => {
-        const y = top + i * lh;
+      const depth = item.depth ?? 0;
+      const curve = item.curve ?? 0;
+
+      const fillStyleFor = (width: number) => {
+        if (!item.gradient) return item.color;
+        const g = ctx.createLinearGradient(-width / 2, 0, width / 2, 0);
+        g.addColorStop(0, item.color);
+        g.addColorStop(1, item.gradient);
+        return g;
+      };
+
+      const paintLine = (line: string, y: number) => {
+        const width = ctx.measureText(line).width || px;
+        // 3D extrusion
+        if (depth > 0) {
+          ctx.save();
+          ctx.fillStyle = item.strokeColor;
+          const steps = Math.max(2, Math.round(depth * 18));
+          for (let d = steps; d >= 1; d--) {
+            const o = (d / steps) * depth * px * 0.35;
+            ctx.fillText(line, o, y + o);
+          }
+          ctx.restore();
+        }
+        if (item.shadow > 0) {
+          ctx.shadowColor = `rgba(0,0,0,${0.75 * item.shadow})`;
+          ctx.shadowBlur = px * 0.28 * item.shadow;
+          ctx.shadowOffsetY = px * 0.06 * item.shadow;
+        }
         if (item.strokeWidth > 0) {
           ctx.lineJoin = "round";
           ctx.strokeStyle = item.strokeColor;
           ctx.lineWidth = px * item.strokeWidth;
           ctx.strokeText(line, 0, y);
         }
-        ctx.fillStyle = item.color;
+        ctx.fillStyle = fillStyleFor(width);
         ctx.fillText(line, 0, y);
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+      };
+
+      lines.forEach((line, i) => {
+        const y = top + i * lh;
+        if (!curve) {
+          paintLine(line, y);
+          return;
+        }
+        // Arc layout: rotate around a virtual circle centred above/below the text.
+        const chars = [...line];
+        const widths = chars.map((c) => ctx.measureText(c).width);
+        const total = widths.reduce((a, b) => a + b, 0) || 1;
+        const angle = (Math.abs(curve) * Math.PI) / 180;
+        const radius = total / angle;
+        const dir = curve > 0 ? 1 : -1;
+        let acc = -total / 2;
+        chars.forEach((ch, ci) => {
+          const cw = widths[ci]!;
+          const theta = ((acc + cw / 2) / radius) * dir;
+          ctx.save();
+          ctx.translate(0, y + dir * radius);
+          ctx.rotate(theta);
+          ctx.translate(0, -dir * radius);
+          paintLine(ch, 0);
+          ctx.restore();
+          acc += cw;
+        });
       });
     }
     ctx.restore();
