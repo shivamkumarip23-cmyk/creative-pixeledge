@@ -184,7 +184,24 @@ export function TextPanel({
           onChange={(v) => onPatch({ opacity: v / 100 })}
           onReset={() => onPatch({ opacity: 1 })}
         />
+        <AdjustSlider
+          label="Curve"
+          value={Math.round(item.curve ?? 0)}
+          min={-180}
+          max={180}
+          onChange={(v) => onPatch({ curve: v })}
+          onReset={() => onPatch({ curve: 0 })}
+        />
+        <AdjustSlider
+          label="3D depth"
+          value={Math.round((item.depth ?? 0) * 100)}
+          min={0}
+          max={100}
+          onChange={(v) => onPatch({ depth: v / 100 })}
+          onReset={() => onPatch({ depth: 0 })}
+        />
       </div>
+
 
       <div className="flex gap-2">
         <button
