@@ -1184,6 +1184,31 @@ export function Editor({
                   onReset={() => patchAdjustment(meta.key, defaultAdjustments[meta.key])}
                 />
               ))}
+              {tab === "Effects" &&
+                (
+                  [
+                    ["glitch", "Glitch", 100],
+                    ["bokeh", "Bokeh", 100],
+                    ["bgBlur", "Blur background", 100],
+                  ] as const
+                ).map(([key, label, max]) => (
+                  <AdjustSlider
+                    key={key}
+                    label={label}
+                    value={state.effects[key]}
+                    min={0}
+                    max={max}
+                    onChange={(v) =>
+                      setState((s) => ({ ...s, effects: { ...s.effects, [key]: v } }))
+                    }
+                    onReset={() =>
+                      setState((s) => ({
+                        ...s,
+                        effects: { ...s.effects, [key]: defaultEffects[key] },
+                      }))
+                    }
+                  />
+                ))}
               <div className="col-span-full pt-1">
                 <button
                   type="button"
