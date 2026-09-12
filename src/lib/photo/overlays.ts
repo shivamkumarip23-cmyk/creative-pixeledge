@@ -257,26 +257,85 @@ export function drawStrokes(
   strokes: Stroke[],
 ) {
   const min = Math.min(w, h);
-  ctx.save();
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
   for (const s of strokes) {
     if (s.points.length === 0) continue;
+    const style = s.style ?? "brush";
+    ctx.save();
+    ctx.lineJoin = "round";
+    ctx.lineCap = style === "marker" || style === "calligraphy" ? "square" : "round";
     ctx.globalCompositeOperation = s.erase ? "destination-out" : "source-over";
-    ctx.globalAlpha = s.erase ? 1 : s.opacity;
+    ctx.globalAlpha = s.erase ? 1 : style === "marker" ? s.opacity * 0.55 : s.opacity;
     ctx.strokeStyle = s.color;
-    ctx.lineWidth = Math.max(1, s.width * min);
-    ctx.beginPath();
-    const p0 = s.points[0]!;
-    ctx.moveTo(p0.x * w, p0.y * h);
-    if (s.points.length === 1) ctx.lineTo(p0.x * w + 0.01, p0.y * h);
-    for (let i = 1; i < s.points.length; i++) {
-      const p = s.points[i]!;
-      ctx.lineTo(p.x * w, p.y * h);
+    ctx.lineWidth = Math.max(1, s.width * min * (style === "marker" ? 1.4 : 1));
+
+    const trace = () => {
+      ctx.beginPath();
+      const p0 = s.points[0]!;
+      ctx.moveTo(p0.x * w, p0.y * h);
+      if (s.points.length === 1) ctx.lineTo(p0.x * w + 0.01, p0.y * h);
+      for (let i = 1; i < s.points.length; i++) {
+        const p = s.points[i]!;
+        ctx.lineTo(p.x * w, p.y * h);
+      }
+      ctx.stroke();
+    };
+
+    if (style === "neon" && !s.erase) {
+      ctx.shadowColor = s.color;
+      ctx.shadowBlur = Math.max(4, s.width * min * 1.8);
+      trace();
+      trace();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = "#ffffff";
+      ctx.globalAlpha = s.opacity * 0.9;
+      ctx.lineWidth = Math.max(1, s.width * min * 0.35);
+      trace();
+    } else if (style === "calligraphy" && !s.erase) {
+      for (const [dx, dy, a] of [
+        [-0.35, 0.35, 1],
+        [0, 0, 1],
+        [0.35, -0.35, 0.8],
+      ] as const) {
+        ctx.save();
+        ctx.globalAlpha = s.opacity * a;
+        ctx.translate(dx * s.width * min, dy * s.width * min);
+        trace();
+        ctx.restore();
+      }
+    } else {
+      trace();
     }
-    ctx.stroke();
+    ctx.restore();
   }
-  ctx.restore();
+}
+
+/** Draws one line of text along an arc. `curve` is the total bend in degrees. */
+function drawCurvedLine(
+  ctx: CanvasRenderingContext2D,
+  line: string,
+  px: number,
+  curve: number,
+  paint: (ch: string, x: number, y: number) => void,
+) {
+  const chars = [...line];
+  const widths = chars.map((c) => ctx.measureText(c).width);
+  const total = widths.reduce((a, b) => a + b, 0) || 1;
+  const angle = (curve * Math.PI) / 180;
+  const radius = total / Math.abs(angle);
+  const dir = curve > 0 ? 1 : -1;
+  let acc = -total / 2;
+  for (let i = 0; i < chars.length; i++) {
+    const wch = widths[i]!;
+    const theta = ((acc + wch / 2) / radius) * dir;
+    ctx.save();
+    ctx.rotate(theta);
+    paint(chars[i]!, 0, -dir * radius + dir * radius * 0 - dir * 0 + (dir > 0 ? -radius + radius : 0));
+    ctx.translate(0, 0);
+    ctx.restore();
+    // position along the arc: translate out to the radius then rotate
+    acc += wch;
+  }
+  void px;
 }
 
 /** Composites text, stickers and brush strokes on top of an edited photo. */
@@ -308,6 +367,14 @@ export function drawOverlays(
     if (item.kind === "sticker") {
       ctx.font = `${px}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
       ctx.fillText(item.char, 0, 0);
+    } else if (item.kind === "image") {
+      const img = getOverlayImage(item.src);
+      if (img.complete && img.naturalWidth) {
+        const ratio = img.naturalWidth / img.naturalHeight;
+        const ih = px;
+        const iw = px * ratio;
+        ctx.drawImage(img, -iw / 2, -ih / 2, iw, ih);
+      }
     } else {
       const weight = item.bold ? "700" : "400";
       const style = item.italic ? "italic " : "";
@@ -315,21 +382,72 @@ export function drawOverlays(
       const lines = item.text.split("\n");
       const lh = px * 1.15;
       const top = -((lines.length - 1) * lh) / 2;
-      if (item.shadow > 0) {
-        ctx.shadowColor = `rgba(0,0,0,${0.75 * item.shadow})`;
-        ctx.shadowBlur = px * 0.28 * item.shadow;
-        ctx.shadowOffsetY = px * 0.06 * item.shadow;
-      }
-      lines.forEach((line, i) => {
-        const y = top + i * lh;
+      const depth = item.depth ?? 0;
+      const curve = item.curve ?? 0;
+
+      const fillStyleFor = (width: number) => {
+        if (!item.gradient) return item.color;
+        const g = ctx.createLinearGradient(-width / 2, 0, width / 2, 0);
+        g.addColorStop(0, item.color);
+        g.addColorStop(1, item.gradient);
+        return g;
+      };
+
+      const paintLine = (line: string, y: number) => {
+        const width = ctx.measureText(line).width || px;
+        // 3D extrusion
+        if (depth > 0) {
+          ctx.save();
+          ctx.fillStyle = item.strokeColor;
+          const steps = Math.max(2, Math.round(depth * 18));
+          for (let d = steps; d >= 1; d--) {
+            const o = (d / steps) * depth * px * 0.35;
+            ctx.fillText(line, o, y + o);
+          }
+          ctx.restore();
+        }
+        if (item.shadow > 0) {
+          ctx.shadowColor = `rgba(0,0,0,${0.75 * item.shadow})`;
+          ctx.shadowBlur = px * 0.28 * item.shadow;
+          ctx.shadowOffsetY = px * 0.06 * item.shadow;
+        }
         if (item.strokeWidth > 0) {
           ctx.lineJoin = "round";
           ctx.strokeStyle = item.strokeColor;
           ctx.lineWidth = px * item.strokeWidth;
           ctx.strokeText(line, 0, y);
         }
-        ctx.fillStyle = item.color;
+        ctx.fillStyle = fillStyleFor(width);
         ctx.fillText(line, 0, y);
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+      };
+
+      lines.forEach((line, i) => {
+        const y = top + i * lh;
+        if (!curve) {
+          paintLine(line, y);
+          return;
+        }
+        // Arc layout: rotate around a virtual circle centred above/below the text.
+        const chars = [...line];
+        const widths = chars.map((c) => ctx.measureText(c).width);
+        const total = widths.reduce((a, b) => a + b, 0) || 1;
+        const angle = (Math.abs(curve) * Math.PI) / 180;
+        const radius = total / angle;
+        const dir = curve > 0 ? 1 : -1;
+        let acc = -total / 2;
+        chars.forEach((ch, ci) => {
+          const cw = widths[ci]!;
+          const theta = ((acc + cw / 2) / radius) * dir;
+          ctx.save();
+          ctx.translate(0, y + dir * radius);
+          ctx.rotate(theta);
+          ctx.translate(0, -dir * radius);
+          paintLine(ch, 0);
+          ctx.restore();
+          acc += cw;
+        });
       });
     }
     ctx.restore();
