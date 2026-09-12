@@ -4,6 +4,7 @@ import {
   drawStrokes,
   fontStack,
   uid,
+  type BrushStyle,
   type Overlays,
   type Stroke,
 } from "@/lib/photo/overlays";
@@ -14,6 +15,7 @@ export type BrushSettings = {
   size: number; // fraction of the smaller side
   opacity: number;
   erase: boolean;
+  style?: BrushStyle;
 };
 
 export function OverlayLayer({
