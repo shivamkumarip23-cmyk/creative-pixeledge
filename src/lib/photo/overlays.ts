@@ -137,9 +137,7 @@ export const fontOptions: FontOption[] = [
 
 export const googleFontsHref =
   "https://fonts.googleapis.com/css2?" +
-  fontOptions
-    .map((f) => `family=${f.name.replace(/ /g, "+")}:wght@400;700`)
-    .join("&") +
+  fontOptions.map((f) => `family=${f.name.replace(/ /g, "+")}`).join("&") +
   "&display=swap";
 
 export const fontStack = (name: string) =>
