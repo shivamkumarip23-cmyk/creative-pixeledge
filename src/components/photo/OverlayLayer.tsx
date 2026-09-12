@@ -84,6 +84,7 @@ export function OverlayLayer({
       width: brush.size,
       opacity: brush.opacity,
       erase: brush.erase,
+      style: brush.style ?? "brush",
       points: [toNorm(e)],
     };
     paint(live.current);
