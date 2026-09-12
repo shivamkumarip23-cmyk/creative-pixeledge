@@ -23,21 +23,25 @@ import {
   RefreshCw,
   Wand2,
   Music4,
-
+  Frame,
 } from "lucide-react";
 import { toast } from "sonner";
 import { adjustmentMeta } from "@/lib/photo/adjustments";
 import { filterGroups, filterPresets } from "@/lib/photo/filters";
 import { outputSize, renderToCanvas } from "@/lib/photo/render";
 import {
+  preloadOverlayImages,
   uid,
+  type ImageItem,
   type Overlays,
   type StickerItem,
   type TextItem,
 } from "@/lib/photo/overlays";
+import type { FrameSettings } from "@/lib/photo/frames";
 import {
   defaultAdjustments,
   defaultEditState,
+  defaultEffects,
   type Adjustments,
   type EditState,
 } from "@/lib/photo/types";
