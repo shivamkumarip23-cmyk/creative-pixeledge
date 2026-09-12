@@ -481,6 +481,7 @@ export function Editor({
   const handleExport = async (opts: ExportOptions) => {
     setBusy(true);
     try {
+      await preloadOverlayImages(state.overlays);
       const blob = await toBlob(opts);
       if (!blob) throw new Error("export failed");
       saveBlob(blob, opts.format.split("/")[1]!.replace("jpeg", "jpg"));
