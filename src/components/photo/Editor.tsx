@@ -80,6 +80,7 @@ type Tab =
   | "Text"
   | "Stickers"
   | "Draw"
+  | "Frames"
   | "Music"
   | "AI";
 const TABS: { id: Tab; icon: typeof Crop }[] = [
@@ -90,6 +91,7 @@ const TABS: { id: Tab; icon: typeof Crop }[] = [
   { id: "Stickers", icon: Smile },
   { id: "Music", icon: Music4 },
   { id: "Draw", icon: Brush },
+  { id: "Frames", icon: Frame },
   { id: "Light", icon: Sun },
   { id: "Color", icon: SlidersHorizontal },
   { id: "Detail", icon: Eye },
@@ -101,11 +103,19 @@ const ASPECTS: { label: string; value: number | null }[] = [
   { label: "Original", value: null },
   { label: "1:1", value: 1 },
   { label: "4:5", value: 4 / 5 },
+  { label: "5:4", value: 5 / 4 },
   { label: "3:4", value: 3 / 4 },
+  { label: "4:3", value: 4 / 3 },
   { label: "2:3", value: 2 / 3 },
+  { label: "3:2", value: 3 / 2 },
   { label: "16:9", value: 16 / 9 },
   { label: "9:16", value: 9 / 16 },
-  { label: "3:2", value: 3 / 2 },
+  { label: "21:9", value: 21 / 9 },
+  { label: "2:1", value: 2 },
+  { label: "1:2", value: 0.5 },
+  { label: "Story 9:16", value: 9 / 16 },
+  { label: "Post 1:1", value: 1 },
+  { label: "Thumb 16:9", value: 16 / 9 },
 ];
 
 const MIN_ZOOM = 0.2;
