@@ -607,6 +607,21 @@ export function Editor({
     setSelectedId(item.id);
   };
 
+  const addImageSticker = (src: string) => {
+    const item: ImageItem = {
+      id: uid(),
+      kind: "image",
+      src,
+      x: 0.5,
+      y: 0.5,
+      size: 0.3,
+      rotation: 0,
+      opacity: 1,
+    };
+    commit({ ...state, overlays: { ...state.overlays, items: [...state.overlays.items, item] } });
+    setSelectedId(item.id);
+  };
+
   const patchSelected = (patch: Partial<TextItem>) => {
     if (!selectedId) return;
     setState((s) => ({
