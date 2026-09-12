@@ -690,7 +690,13 @@ export function Editor({
                       : "border-border bg-secondary hover:bg-muted",
                   )}
                 >
-                  <span className="truncate">{item.kind === "text" ? item.text || "Text" : item.char}</span>
+                  <span className="truncate">
+                    {item.kind === "text"
+                      ? item.text || "Text"
+                      : item.kind === "sticker"
+                        ? item.char
+                        : "Image"}
+                  </span>
                   <span className="text-muted-foreground">{item.kind}</span>
                 </button>
               ))}
