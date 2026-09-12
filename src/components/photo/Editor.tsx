@@ -1033,7 +1033,19 @@ export function Editor({
             />
           )}
 
-          {tab === "Stickers" && <StickerPanel onAdd={addSticker} />}
+          {tab === "Stickers" && (
+            <StickerPanel onAdd={addSticker} onAddImage={addImageSticker} />
+          )}
+
+          {tab === "Frames" && (
+            <FramePanel
+              frame={state.frame}
+              onChange={(patch: Partial<FrameSettings>) =>
+                setState((s) => ({ ...s, frame: { ...s.frame, ...patch } }))
+              }
+              onBegin={beginAdjustment}
+            />
+          )}
 
           {tab === "Music" && (
             <MusicPanel
