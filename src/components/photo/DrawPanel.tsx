@@ -62,12 +62,36 @@ export function DrawPanel({
         </button>
       </div>
 
+      <div>
+        <p className="mb-2 text-[10px] font-semibold tracking-widest text-muted-foreground">
+          BRUSH TYPE
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {(["brush", "marker", "neon", "calligraphy"] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => onChange({ style: s, erase: false })}
+              className={cn(
+                "rounded-xl border px-3 py-1.5 text-xs font-medium capitalize transition-colors",
+                !brush.erase && (brush.style ?? "brush") === s
+                  ? "border-primary bg-primary/15 text-primary"
+                  : "border-border bg-secondary hover:bg-muted",
+              )}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <ColorRow
         label="BRUSH COLOUR"
         value={brush.color}
         onChange={(color) => onChange({ color })}
         onBegin={() => {}}
       />
+
 
       <div className="grid gap-x-8 sm:grid-cols-2">
         <AdjustSlider
